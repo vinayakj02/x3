@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>x3 · scramble layouts</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.cubing.net/v0/js/cubing/twisty" type="module"></script>
+  <style>
+    :root {
+      --face: #e7e9ec;
+      --face-deep: #dfe2e7;
+      --ink: #10121a;
+      --ink-soft: #3a3f4d;
+      --hair: rgba(16, 18, 26, 0.14);
+      --hair-strong: rgba(16, 18, 26, 0.3);
+      --accent: #1e6fd9;
+      --grid: 24px;
+      --font-display: "Space Grotesk", system-ui, sans-serif;
+      --font-mono: "Space Mono", ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      background: var(--face);
+      color: var(--ink);
+      font-family: var(--font-display);
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap { max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+    h1 { font-family: var(--font-mono); font-size: 0.8rem; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 700; margin: 0 0 0.3rem; }
+    .sub { font-size: 0.9rem; color: var(--ink-soft); margin: 0 0 2rem; }
+
+    .option {
+      border: 1px solid var(--hair-strong);
+      background: var(--face-deep);
+      padding: 1.2rem 1.2rem 1.4rem;
+      margin-bottom: 1.6rem;
+      cursor: pointer;
+      position: relative;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .option:hover { border-color: var(--ink-soft); }
+    .option.selected { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 8px 24px rgba(30,111,217,0.12); }
+    .opt-head { display: flex; align-items: baseline; gap: 0.8rem; margin-bottom: 1rem; }
+    .opt-num { font-family: var(--font-mono); font-size: 0.75rem; font-weight: 700; color: var(--accent); }
+    .opt-name { font-family: var(--font-mono); font-size: 0.8rem; letter-spacing: 0.2em; text-transform: uppercase; font-weight: 700; }
+    .opt-desc { font-size: 0.85rem; color: var(--ink-soft); }
+
+    .opt-preview { margin-top: 1rem; }
+    .note { position: absolute; top: 0.6rem; right: 0.8rem; font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); opacity: 0; }
+    .option.selected .note { opacity: 1; }
+
+    /* shared scramble/cube pieces */
+    .cube { flex: none; opacity: 0.94; }
+    .scr { font-family: var(--font-mono); color: var(--ink); font-weight: 700; }
+
+    /* Option 1 — stacked header card */
+    .o1 { display: flex; align-items: flex-start; gap: 1.2rem; border: 1px solid var(--hair-strong); background: var(--face); padding: 1.1rem; }
+    .o1 .scr { font-size: 1.15rem; line-height: 1.7; flex: 1; }
+    .o1 .cube { width: 110px; height: 110px; }
+
+    /* Option 2 — timer-integrated */
+    .o2 { position: relative; border: 1px solid var(--hair-strong); background: var(--face-deep); min-height: 260px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; padding: 1rem 1.4rem; overflow: hidden; }
+    .o2-grid { position: absolute; inset: 0; background-image: linear-gradient(var(--hair) 1px, transparent 1px), linear-gradient(90deg, var(--hair) 1px, transparent 1px); background-size: var(--grid) var(--grid); opacity: 0.28; }
+    .o2 .cube { position: absolute; top: 0.7rem; left: 0.7rem; width: 84px; height: 84px; }
+    .o2 .scr { position: relative; z-index: 2; font-size: 0.92rem; line-height: 1.7; text-align: center; max-width: 46ch; }
+    .o2-readout { position: relative; z-index: 2; font-family: var(--font-mono); font-weight: 700; font-size: 3.4rem; line-height: 1; }
+    .o2-hint { position: relative; z-index: 2; font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-soft); }
+
+    /* Option 3 — single-line console */
+    .o3 { display: flex; align-items: center; gap: 1rem; border: 1px solid var(--hair-strong); background: var(--face); padding: 0.7rem 1rem; }
+    .o3 .cube { width: 72px; height: 72px; }
+    .o3 .scr { font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: 0.04em; }
+    .o3-tick { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.15em; color: var(--accent); border: 1px solid var(--hair-strong); padding: 0.15rem 0.4rem; flex: none; }
+
+    /* Option 4 — scramble left, cube right */
+    .o4 { display: flex; align-items: center; justify-content: space-between; gap: 1.4rem; border: 1px solid var(--hair-strong); background: var(--face); padding: 1.1rem 1.4rem; }
+    .o4 .scr { font-size: 1.05rem; line-height: 1.7; max-width: 56ch; }
+    .o4 .cube { width: 140px; height: 140px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>x3 · scramble layout preview</h1>
+    <p class="sub">Click a layout to select it, then tell me the number. Same cube + scramble rendered in each.</p>
+
+    <div class="option" id="opt-1">
+      <div class="opt-head">
+        <span class="opt-num">01</span>
+        <span class="opt-name">Stacked header card</span>
+      </div>
+      <p class="opt-desc">Scramble full-width on top (wraps, left-aligned); small cube tucked top-right; hairline-framed card. Scramble is the focus.</p>
+      <span class="note">selected</span>
+      <div class="opt-preview">
+        <div class="o1">
+          <twisty-player class="cube" puzzle="3x3x3" alg="" background="none" control-panel="none" hint-facelets="none"></twisty-player>
+          <div class="scr">B' R U L2 F D2 B' R U' F2 L2 D2 R2 B' U2 F D2 F2 R' B L2 D' R' F2 D B' U'</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="option" id="opt-2">
+      <div class="opt-head">
+        <span class="opt-num">02</span>
+        <span class="opt-name">Timer-integrated</span>
+      </div>
+      <p class="opt-desc">No separate strip — cube shrinks into the timer panel's corner, scramble sits just above the readout. Everything timer-focused.</p>
+      <span class="note">selected</span>
+      <div class="opt-preview">
+        <div class="o2">
+          <div class="o2-grid"></div>
+          <twisty-player class="cube" puzzle="3x3x3" alg="" background="none" control-panel="none" hint-facelets="none"></twisty-player>
+          <div class="scr">B' R U L2 F D2 B' R U' F2 L2 D2 R2 B' U2 F D2 F2 R' B</div>
+          <div class="o2-readout">0.000</div>
+          <div class="o2-hint">hold to start</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="option" id="opt-3">
+      <div class="opt-head">
+        <span class="opt-num">03</span>
+        <span class="opt-name">Single-line console</span>
+      </div>
+      <p class="opt-desc">One compact row — tiny cube + single-line scramble that truncates, like a ticker. Maximum room for the timer.</p>
+      <span class="note">selected</span>
+      <div class="opt-preview">
+        <div class="o3">
+          <twisty-player class="cube" puzzle="3x3x3" alg="" background="none" control-panel="none" hint-facelets="none"></twisty-player>
+          <div class="scr">B' R U L2 F D2 B' R U' F2 L2 D2 R2 B' U2 F D2 F2 R' B L2 D' R' F2 D B' U'</div>
+          <span class="o3-tick">view</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="option" id="opt-4">
+      <div class="opt-head">
+        <span class="opt-num">04</span>
+        <span class="opt-name">Scramble left, cube right</span>
+      </div>
+      <p class="opt-desc">Symmetrical swap — scramble left-aligned filling the strip, cube on the right edge. Balanced, neither dominates.</p>
+      <span class="note">selected</span>
+      <div class="opt-preview">
+        <div class="o4">
+          <div class="scr">B' R U L2 F D2 B' R U'<br />F2 L2 D2 R2 B' U2 F D2 F2 R' B</div>
+          <twisty-player class="cube" puzzle="3x3x3" alg="" background="none" control-panel="none" hint-facelets="none"></twisty-player>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    const SCR = "B' R U L2 F D2 B' R U' F2 L2 D2 R2 B' U2 F D2 F2 R' B L2 D' R' F2 D B' U'";
+    document.querySelectorAll("twisty-player").forEach((tp) => {
+      tp.alg = SCR;
+    });
+    const options = document.querySelectorAll(".option");
+    options.forEach((opt) => {
+      opt.addEventListener("click", () => {
+        options.forEach((o) => o.classList.remove("selected"));
+        opt.classList.add("selected");
+      });
+    });
+  </script>
+</body>
+</html>

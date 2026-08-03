@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>x3 · explore</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --face: #e7e9ec; --face-deep: #dfe2e7; --ink: #10121a; --ink-soft: #3a3f4d;
+      --hair: rgba(16,18,26,0.14); --hair-strong: rgba(16,18,26,0.3);
+      --accent: #1e6fd9; --ok: #1f7a48; --bad: #b23a2b; --brass: #a97c3f;
+      --font-display: "Space Grotesk", system-ui, sans-serif;
+      --font-mono: "Space Mono", ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body { background: var(--face); color: var(--ink); font-family: var(--font-display); -webkit-font-smoothing: antialiased; min-height: 100vh; }
+    .wrap { max-width: 900px; margin: 0 auto; padding: 2.2rem 1.5rem 4rem; }
+    .brand { display: flex; align-items: center; gap: 0.55rem; font-size: 1.2rem; font-weight: 600; margin-bottom: 0.4rem; }
+    .brand-3 { color: var(--accent); }
+    .sub { font-size: 0.9rem; color: var(--ink-soft); margin: 0 0 2rem; }
+    .list { border-top: 1px solid var(--hair-strong); }
+    .item { display: flex; align-items: baseline; gap: 1rem; padding: 1rem 0.2rem; border-bottom: 1px solid var(--hair); text-decoration: none; color: var(--ink); }
+    .item:hover .item-name { color: var(--accent); }
+    .item-num { font-family: var(--font-mono); font-size: 0.7rem; color: var(--ink-soft); }
+    .item-name { font-family: var(--font-mono); font-size: 0.95rem; font-weight: 700; letter-spacing: 0.08em; transition: color 0.12s ease; min-width: 120px; }
+    .item-desc { font-size: 0.88rem; color: var(--ink-soft); }
+    .item-link { font-family: var(--font-mono); font-size: 0.72rem; color: var(--accent); white-space: nowrap; }
+    @media (max-width: 560px) { .item { flex-wrap: wrap; } .item-link { margin-left: auto; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand">x<span class="brand-3">3</span> · explore</div>
+    <p class="sub">Standalone experiments and tools. Open one to play with it.</p>
+    <div class="list" id="list"></div>
+  </div>
+  <script>
+    const PAGES = [
+      { href: "/", name: "Timer", desc: "The main speedcubing timer." },
+      { href: "/viz.html", name: "Visualizations", desc: "15 meaningful charts on your solve data — trend, histogram, PBs, box plot, pace, streaks, session compare." },
+      { href: "/themes.html", name: "Themes", desc: "200 Linux-inspired themes with live preview." },
+      { href: "/logos.html", name: "Logo Lab", desc: "20 animated p5.js x3 logo concepts." },
+      { href: "/logos-kp.html", name: "Logo Lab · Kaleido+Field", desc: "12 hybrids of the kaleidoscope × particle-field logos." },
+      { href: "/celebrations.html", name: "Celebrations", desc: "Pick the record-banner effect (fireworks, confetti, rings…) — 20 presets." },
+      { href: "/layouts.html", name: "Layouts", desc: "Scramble + cube layout previews." },
+    ];
+    const list = document.getElementById("list");
+    PAGES.forEach((p, i) => {
+      const a = document.createElement("a");
+      a.className = "item";
+      a.href = p.href;
+      const num = document.createElement("span");
+      num.className = "item-num";
+      num.textContent = String(i).padStart(2, "0");
+      const name = document.createElement("span");
+      name.className = "item-name";
+      name.textContent = p.name;
+      const desc = document.createElement("span");
+      desc.className = "item-desc";
+      desc.textContent = p.desc;
+      const link = document.createElement("span");
+      link.className = "item-link";
+      link.textContent = "open →";
+      a.append(num, name, desc, link);
+      list.appendChild(a);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>x3</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.cubing.net/v0/js/cubing/twisty" type="module"></script>
+  <link rel="stylesheet" href="styles.css?v=24" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-mark" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+        <rect x="1.5" y="1.5" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.4" />
+        <line x1="7.16" y1="1.5" x2="7.16" y2="18.5" stroke="currentColor" stroke-width="1.4" />
+        <line x1="12.83" y1="1.5" x2="12.83" y2="18.5" stroke="currentColor" stroke-width="1.4" />
+        <line x1="1.5" y1="7.16" x2="18.5" y2="7.16" stroke="currentColor" stroke-width="1.4" />
+        <line x1="1.5" y1="12.83" x2="18.5" y2="12.83" stroke="currentColor" stroke-width="1.4" />
+        <rect x="7.83" y="7.83" width="4.33" height="4.33" fill="var(--accent)" />
+      </svg>
+      <span class="brand-name"><span class="brand-x">x</span><span class="brand-3">3</span></span>
+    </div>
+    <div class="topbar-right">
+      <a href="explore.html" class="ghost-btn" style="text-decoration:none">explore</a>
+      <div class="themes-wrap">
+        <button id="themes-btn" class="ghost-btn" type="button">themes</button>
+        <div class="themes-pop" id="themes-pop" hidden>
+          <input id="themes-search" class="themes-search" type="search" placeholder="search themes…" />
+          <div class="themes-filter">
+            <button class="tv-btn active" data-view="pinned" type="button">pinned</button>
+            <button class="tv-btn" data-view="all" type="button">all</button>
+          </div>
+          <div class="themes-list" id="themes-list"></div>
+        </div>
+      </div>
+      <div class="settings-wrap">
+        <button id="settings-btn" class="ghost-btn" type="button">settings</button>
+        <div class="settings-pop" id="settings-pop" hidden>
+          <div class="settings-section">
+            <h4>scramble</h4>
+            <div class="settings-range">
+              <input id="scramble-size" type="range" min="70" max="150" step="5" value="100" />
+              <span class="settings-value" id="scramble-size-value">100%</span>
+            </div>
+            <label class="switch-row">
+              <input id="scramble-visible" type="checkbox" checked />
+              <span>show scramble</span>
+            </label>
+          </div>
+          <div class="settings-section">
+            <h4>cube</h4>
+            <label class="switch-row">
+              <input id="cube-visible" type="checkbox" checked />
+              <span>show cube</span>
+            </label>
+            <label class="switch-row">
+              <input id="sticky-colors" type="checkbox" />
+              <span>keep my cube colors (theme won't override)</span>
+            </label>
+            <div class="settings-range">
+              <label class="switch-row" for="cube-size" style="min-width:72px">size</label>
+              <input id="cube-size" type="range" min="60" max="220" step="5" value="118" />
+              <span class="settings-value" id="cube-size-value">118</span>
+            </div>
+          </div>
+          <div class="settings-section">
+            <h4>cube colors</h4>
+            <div class="color-grid">
+              <div class="color-row" data-face="U"><span class="color-face">U</span><input type="color" /></div>
+              <div class="color-row" data-face="D"><span class="color-face">D</span><input type="color" /></div>
+              <div class="color-row" data-face="F"><span class="color-face">F</span><input type="color" /></div>
+              <div class="color-row" data-face="B"><span class="color-face">B</span><input type="color" /></div>
+              <div class="color-row" data-face="R"><span class="color-face">R</span><input type="color" /></div>
+              <div class="color-row" data-face="L"><span class="color-face">L</span><input type="color" /></div>
+            </div>
+          </div>
+          <div class="settings-section">
+            <h4>fonts</h4>
+            <div class="settings-range">
+              <label class="switch-row" for="font-display" style="min-width:72px">display</label>
+              <select id="font-display" class="settings-select"></select>
+            </div>
+            <div class="settings-range">
+              <label class="switch-row" for="font-mono" style="min-width:72px">data</label>
+              <select id="font-mono" class="settings-select"></select>
+            </div>
+          </div>
+          <div class="settings-section">
+            <h4>themes</h4>
+            <input id="settings-themes-search" class="themes-search" type="search" placeholder="search themes…" />
+            <div class="themes-filter">
+              <button class="tv-btn active" data-view="pinned" type="button">pinned</button>
+              <button class="tv-btn" data-view="all" type="button">all</button>
+            </div>
+            <div class="themes-list" id="settings-themes-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="stage stage-split">
+    <aside class="history">
+      <div class="session-bar">
+        <div class="event-picker">
+          <button id="event-btn" class="session-btn" type="button">3x3</button>
+          <div class="session-pop" id="event-pop" hidden></div>
+        </div>
+        <div class="session-picker">
+          <button id="session-btn" class="session-btn" type="button">session</button>
+          <div class="session-pop" id="session-pop" hidden></div>
+        </div>
+        <button id="new-session" class="ghost-btn" type="button" title="new session">+</button>
+      </div>
+
+      <section class="stats" aria-label="Session statistics">
+        <div class="stat-row stat-row-head">
+          <span class="stat-label"></span>
+          <span class="stat-head-cell">time</span>
+          <span class="stat-head-cell">mo3</span>
+          <span class="stat-head-cell">ao5</span>
+          <span class="stat-head-cell">ao12</span>
+          <span class="stat-head-cell">ao100</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">current</span>
+          <span class="stat-value" id="stat-cur-time">—</span>
+          <span class="stat-value" id="stat-cur-mo3">—</span>
+          <span class="stat-value" id="stat-cur-ao5">—</span>
+          <span class="stat-value" id="stat-cur-ao12">—</span>
+          <span class="stat-value" id="stat-cur-ao100">—</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">best</span>
+          <span class="stat-value" id="stat-best-time">—</span>
+          <span class="stat-value" id="stat-best-mo3">—</span>
+          <span class="stat-value" id="stat-best-ao5">—</span>
+          <span class="stat-value" id="stat-best-ao12">—</span>
+          <span class="stat-value" id="stat-best-ao100">—</span>
+        </div>
+      </section>
+
+      <div class="session-note"><span id="stat-count">0</span> solves · mean <span id="stat-mean">—</span></div>
+
+      <div class="spark-wrap">
+        <svg id="sparkline" class="sparkline" viewBox="0 0 320 44" aria-hidden="true">
+          <path id="sparkline-path" class="sparkline-path" />
+          <circle id="sparkline-best" class="sparkline-dot best" r="2.5" />
+          <circle id="sparkline-worst" class="sparkline-dot worst" r="2.5" />
+        </svg>
+      </div>
+
+      <div class="solves-header">
+        <h2 class="solves-title">history</h2>
+        <button id="clear-session" class="ghost-btn danger" type="button">clear</button>
+      </div>
+      <div class="solve-cols">
+        <span>#</span><span>time</span><span>ao5</span><span>ao12</span><span>ao100</span>
+      </div>
+      <ol class="solve-list" id="solve-list"></ol>
+    </aside>
+
+    <div class="main-col">
+      <section class="instrument">
+        <div class="instrument-grid" aria-hidden="true"></div>
+        <div class="scramble-nav">
+          <button id="prev-scramble" class="ghost-btn" type="button" title="previous scramble">‹ prev</button>
+          <button id="next-scramble" class="ghost-btn" type="button" title="new scramble">next ⟳</button>
+        </div>
+        <twisty-player id="cube" class="cube" puzzle="3x3x3" alg=""
+          background="none" control-panel="none" hint-facelets="none"></twisty-player>
+        <div class="scramble" id="scramble" aria-label="Scramble"></div>
+        <div class="readout" id="readout" aria-live="polite">0.000</div>
+        <div class="hint" id="hint">hold to start · or press <kbd>space</kbd></div>
+        <div class="penalty-bar" id="penalty-bar" hidden>
+          <span class="penalty-label">mark this solve</span>
+          <button class="penalty-btn plus-two" data-penalty="PLUS_TWO" type="button">+2</button>
+          <button class="penalty-btn dnf" data-penalty="DNF" type="button">DNF</button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div class="modal" id="solve-modal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <button class="modal-close" data-close aria-label="close" type="button">✕</button>
+      <h3 class="modal-title" id="modal-title">solve</h3>
+      <div class="modal-time" id="modal-time"></div>
+      <dl class="modal-meta">
+        <div><dt>solved</dt><dd id="meta-solved">—</dd></div>
+        <div><dt>rank</dt><dd id="meta-rank">—</dd></div>
+        <div><dt>vs mean</dt><dd id="meta-deviation">—</dd></div>
+        <div><dt>moves</dt><dd id="meta-moves">—</dd></div>
+        <div><dt>session</dt><dd id="meta-session">—</dd></div>
+      </dl>
+      <div class="modal-scramble" id="modal-scramble"></div>
+      <div class="modal-actions">
+        <button class="penalty-btn plus-two" id="modal-plus-two" type="button">+2</button>
+        <button class="penalty-btn dnf" id="modal-dnf" type="button">DNF</button>
+        <span class="modal-spacer" aria-hidden="true"></span>
+        <button class="ghost-btn danger" id="modal-delete" type="button">delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="confirm-modal" hidden>
+    <div class="modal-backdrop" data-close-confirm></div>
+    <div class="modal-card" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
+      <h3 class="modal-title" id="confirm-title">unusual solve</h3>
+      <div class="modal-time" id="confirm-time"></div>
+      <p class="confirm-text" id="confirm-text"></p>
+      <div class="modal-actions">
+        <button class="ghost-btn" id="confirm-keep" type="button">keep it</button>
+        <span class="modal-spacer" aria-hidden="true"></span>
+        <button class="ghost-btn danger" id="confirm-redo" type="button">redo it</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="themes.js"></script>
+  <script src="celebrate.js"></script>
+  <script type="module" src="app.js?v=22"></script>
+</body>
+</html>

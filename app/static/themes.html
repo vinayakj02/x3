@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>x3 · 200 Linux themes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --face: #e7e9ec; --face-deep: #dfe2e7; --ink: #10121a; --ink-soft: #3a3f4d;
+      --hair: rgba(16,18,26,0.14); --hair-strong: rgba(16,18,26,0.3);
+      --accent: #1e6fd9;
+      --font-display: "Space Grotesk", system-ui, sans-serif;
+      --font-mono: "Space Mono", ui-monospace, monospace;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body { background: var(--face); color: var(--ink); font-family: var(--font-display); -webkit-font-smoothing: antialiased; }
+    .wrap { max-width: 1180px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+    h1 { font-family: var(--font-mono); font-size: 0.8rem; letter-spacing: 0.3em; text-transform: uppercase; font-weight: 700; margin: 0 0 0.4rem; }
+    .sub { font-size: 0.9rem; color: var(--ink-soft); margin: 0 0 1.2rem; }
+    .search { font-family: var(--font-mono); font-size: 0.85rem; color: var(--ink); background: var(--face-deep); border: 1px solid var(--hair-strong); border-radius: 0; padding: 0.55rem 0.7rem; width: 100%; max-width: 420px; margin-bottom: 1.6rem; }
+    .search:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; }
+    .count { font-family: var(--font-mono); font-size: 0.7rem; color: var(--ink-soft); margin-bottom: 1.2rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 0.8rem; }
+    .card { border: 1px solid var(--hair-strong); background: var(--face-deep); padding: 0.7rem 0.8rem; cursor: pointer; transition: border-color 0.12s ease; }
+    .card:hover { border-color: var(--accent); }
+    .card.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    .card-top { display: flex; justify-content: space-between; align-items: baseline; gap: 0.4rem; margin-bottom: 0.55rem; }
+    .card-name { font-family: var(--font-mono); font-size: 0.74rem; font-weight: 700; color: var(--ink); }
+    .card-badge { font-family: var(--font-mono); font-size: 0.56rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft); border: 1px solid var(--hair-strong); padding: 0.05rem 0.3rem; flex: none; }
+    .swatches { display: flex; gap: 3px; }
+    .swatches i { width: 14px; height: 14px; border: 1px solid var(--hair-strong); flex: none; }
+    .card-hex { font-family: var(--font-mono); font-size: 0.58rem; color: var(--ink-soft); margin-top: 0.5rem; letter-spacing: 0.04em; }
+    .controls { display: flex; align-items: center; flex-wrap: wrap; gap: 0.8rem; margin-bottom: 1.4rem; }
+    .controls .search { margin-bottom: 0; flex: 1; min-width: 220px; max-width: 420px; }
+    .filter { display: flex; gap: 0.4rem; }
+    .fbtn { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft); background: none; border: 1px solid var(--hair-strong); padding: 0.4rem 0.7rem; cursor: pointer; }
+    .fbtn.active { color: #fff; background: var(--accent); border-color: var(--accent); }
+    .card-top { display: flex; justify-content: space-between; align-items: center; gap: 0.4rem; margin-bottom: 0.55rem; }
+    .pin-btn { border: 1px solid var(--hair-strong); background: var(--face); color: var(--ink-soft); font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.08em; text-transform: uppercase; width: auto; padding: 0.2rem 0.5rem; line-height: 1; cursor: pointer; flex: none; }
+    .pin-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .pin-btn.pinned { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .card .pin-holder { margin-left: auto; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>x3 · themes</h1>
+    <p class="sub">Linux distro, terminal, and movie themes. Click a card to preview it. <b>Pin</b> the ones you like — the app's themes panel shows pinned picks first. Movies: Star Wars, Alien, Blade Runner, Tron, The Matrix, Dune, Interstellar, Cyberpunk 2077.</p>
+    <div class="controls">
+      <input id="search" class="search" type="search" placeholder="search themes…" />
+      <div class="filter">
+        <button class="fbtn active" data-f="all" type="button">all</button>
+        <button class="fbtn" data-f="pinned" type="button">pinned (<span id="pin-count">0</span>)</button>
+      </div>
+    </div>
+    <div class="count" id="count"></div>
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <script src="themes.js"></script>
+  <script>
+    const SYSTEM_THEMES = [
+      { id: "light", name: "x3 · Light", group: "x3", dark: false },
+      { id: "dark", name: "x3 · Dark", group: "x3", dark: true },
+    ];
+    const all = [...SYSTEM_THEMES, ...(window.THEMES || [])];
+
+    function hexToRgb(hex) {
+      const h = hex.replace("#", "");
+      return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16) };
+    }
+    function applyTheme(id) {
+      const root = document.documentElement;
+      const t = all.find((x) => x.id === id);
+      if (!t) return;
+      document.querySelectorAll(".card").forEach((c) => c.classList.toggle("active", c.dataset.id === id));
+      if (t.colors) {
+        const c = t.colors;
+        const ink = hexToRgb(c.ink);
+        root.style.setProperty("--face", c.face);
+        root.style.setProperty("--face-deep", c.faceDeep);
+        root.style.setProperty("--ink", c.ink);
+        root.style.setProperty("--ink-soft", c.inkSoft);
+        root.style.setProperty("--accent", c.accent);
+        root.style.setProperty("--hair", `rgba(${ink.r},${ink.g},${ink.b},0.14)`);
+        root.style.setProperty("--hair-strong", `rgba(${ink.r},${ink.g},${ink.b},0.3)`);
+      } else {
+        root.removeAttribute("style");
+        root.dataset.theme = t.dark ? "dark" : "light";
+      }
+    }
+
+    const PIN_KEY = "x3.pinnedThemes";
+    function getPinned() { try { return JSON.parse(localStorage.getItem(PIN_KEY)) || []; } catch (e) { return []; } }
+    function savePinned(arr) { try { localStorage.setItem(PIN_KEY, JSON.stringify(arr)); } catch (e) {} }
+    let view = "all";
+
+    function render() {
+      const grid = document.getElementById("grid");
+      grid.innerHTML = "";
+      const f = document.getElementById("search").value.toLowerCase();
+      const pinned = getPinned();
+      let items = all.filter((t) => !f || t.name.toLowerCase().includes(f));
+      if (view === "pinned") items = items.filter((t) => pinned.includes(t.id));
+      document.getElementById("count").textContent = `${items.length} of ${all.length} themes`;
+      for (const t of items) {
+        const card = document.createElement("div");
+        card.className = "card" + (t.id === (localStorage.getItem("x3.themePreview") || "") ? " active" : "");
+        card.dataset.id = t.id;
+        const top = document.createElement("div");
+        top.className = "card-top";
+        const name = document.createElement("span");
+        name.className = "card-name";
+        name.textContent = t.name;
+        const pinBtn = document.createElement("button");
+        pinBtn.type = "button";
+        pinBtn.className = "pin-btn" + (pinned.includes(t.id) ? " pinned" : "");
+        pinBtn.textContent = pinned.includes(t.id) ? "pinned" : "pin";
+        pinBtn.title = "pin/unpin";
+        pinBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const arr = getPinned();
+          const idx = arr.indexOf(t.id);
+          if (idx === -1) arr.push(t.id); else arr.splice(idx, 1);
+          savePinned(arr);
+          document.getElementById("pin-count").textContent = String(arr.length);
+          render();
+        });
+        const badge = document.createElement("span");
+        badge.className = "card-badge";
+        badge.textContent = t.dark ? "dark" : "light";
+        top.append(name, pinBtn, badge);
+        const sw = document.createElement("div");
+        sw.className = "swatches";
+        const cols = t.colors ? [t.colors.face, t.colors.faceDeep, t.colors.ink, t.colors.accent] : ["#e7e9ec", "#dfe2e7", "#10121a", "#1e6fd9"];
+        for (const c of cols) {
+          const i = document.createElement("i");
+          i.style.background = c;
+          sw.appendChild(i);
+        }
+        const hex = document.createElement("div");
+        hex.className = "card-hex";
+        hex.textContent = t.colors ? `${t.colors.face} · ${t.colors.accent}` : "";
+        card.append(top, sw, hex);
+        card.addEventListener("click", () => {
+          applyTheme(t.id);
+          localStorage.setItem("x3.themePreview", t.id);
+        });
+        grid.appendChild(card);
+      }
+    }
+
+    document.getElementById("search").addEventListener("input", render);
+    document.querySelectorAll(".fbtn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        view = btn.dataset.f;
+        document.querySelectorAll(".fbtn").forEach((b) => b.classList.toggle("active", b === btn));
+        document.getElementById("pin-count").textContent = String(getPinned().length);
+        render();
+      });
+    });
+    document.getElementById("pin-count").textContent = String(getPinned().length);
+    render();
+    const saved = localStorage.getItem("x3.themePreview");
+    if (saved) applyTheme(saved);
+  </script>
+</body>
+</html>

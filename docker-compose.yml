@@ -1,0 +1,11 @@
+services:
+  timer:
+    build: .
+    ports:
+      - "8080:8000"
+    volumes:
+      - timer-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  timer-data:
