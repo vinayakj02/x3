@@ -18,7 +18,6 @@ const state = {
   scrambleList: [],
   scrambleIndex: -1,
   event: "333",
-  themesView: "pinned",
 };
 
 const el = {
@@ -31,7 +30,6 @@ const el = {
   eventBtn: document.getElementById("event-btn"),
   eventPop: document.getElementById("event-pop"),
   newSession: document.getElementById("new-session"),
-  clearSession: document.getElementById("clear-session"),
   cube: document.getElementById("cube"),
   solveList: document.getElementById("solve-list"),
   penaltyBar: document.getElementById("penalty-bar"),
@@ -51,7 +49,7 @@ const el = {
   sparklinePath: document.getElementById("sparkline-path"),
   sparklineBest: document.getElementById("sparkline-best"),
   sparklineWorst: document.getElementById("sparkline-worst"),
-  colorRows: document.querySelectorAll(".color-row"),
+  sparkEmpty: document.getElementById("spark-empty"),
   themesBtn: document.getElementById("themes-btn"),
   themesPop: document.getElementById("themes-pop"),
   themesSearch: document.getElementById("themes-search"),
@@ -62,11 +60,9 @@ const el = {
   scrambleSizeValue: document.getElementById("scramble-size-value"),
   scrambleVisible: document.getElementById("scramble-visible"),
   cubeVisible: document.getElementById("cube-visible"),
-  stickyColors: document.getElementById("sticky-colors"),
   cubeSize: document.getElementById("cube-size"),
   cubeSizeValue: document.getElementById("cube-size-value"),
-  fontDisplay: document.getElementById("font-display"),
-  fontMono: document.getElementById("font-mono"),
+  font: document.getElementById("font"),
   settingsThemesSearch: document.getElementById("settings-themes-search"),
   settingsThemesList: document.getElementById("settings-themes-list"),
   confirmModal: document.getElementById("confirm-modal"),
@@ -81,14 +77,10 @@ const statEl = {
   curMo3: document.getElementById("stat-cur-mo3"),
   curAo5: document.getElementById("stat-cur-ao5"),
   curAo12: document.getElementById("stat-cur-ao12"),
-  curAo100: document.getElementById("stat-cur-ao100"),
   bestTime: document.getElementById("stat-best-time"),
   bestMo3: document.getElementById("stat-best-mo3"),
   bestAo5: document.getElementById("stat-best-ao5"),
   bestAo12: document.getElementById("stat-best-ao12"),
-  bestAo100: document.getElementById("stat-best-ao100"),
-  count: document.getElementById("stat-count"),
-  mean: document.getElementById("stat-mean"),
 };
 
 const ARMED_MS = 300;
@@ -98,11 +90,16 @@ const EVENTS = [
   { id: "333", name: "3x3", puzzle: "3x3x3" },
   { id: "333oh", name: "3x3 OH", puzzle: "3x3x3" },
   { id: "333bf", name: "3x3 BLD", puzzle: "3x3x3" },
-  { id: "444", name: "4x4", puzzle: "4x4x4" },
-  { id: "555", name: "5x5", puzzle: "5x5x5" },
-  { id: "666", name: "6x6", puzzle: "6x6x6" },
-  { id: "777", name: "7x7", puzzle: "7x7x7" },
+  { id: "444", name: "4x4", puzzle: "4x4x4", scale: 1.3 },
+  { id: "555", name: "5x5", puzzle: "5x5x5", scale: 1.5 },
+  { id: "666", name: "6x6", puzzle: "6x6x6", scale: 1.7 },
+  { id: "777", name: "7x7", puzzle: "7x7x7", scale: 1.9 },
 ];
+
+function applyEventScale() {
+  const ev = EVENTS.find((e) => e.id === state.event);
+  document.documentElement.style.setProperty("--scramble-event-scale", String(ev ? ev.scale || 1 : 1));
+}
 
 /* ---------- formatting ---------- */
 
@@ -225,12 +222,20 @@ function setCubeAlg(moves) {
 function fitScramble() {
   const s = el.scramble;
   s.style.fontSize = "";
+  s.style.maxHeight = "";
   const max = parseFloat(getComputedStyle(s).fontSize);
-  let size = max;
   const min = 9;
-  while (size > min && s.scrollWidth > s.clientWidth + 1) {
+  const ev = EVENTS.find((e) => e.id === state.event);
+  const maxLines = ev && (ev.scale || 1) >= 1.7 ? 5 : 3;
+  const cap = (sz) => {
+    s.style.maxHeight = `${maxLines * sz * 1.55}px`;
+  };
+  let size = max;
+  cap(size);
+  while (size > min && s.scrollHeight > s.clientHeight + 1) {
     size -= 0.5;
-    s.style.fontSize = size + "px";
+    s.style.fontSize = `${size}px`;
+    cap(size);
   }
   s.title = s.textContent;
 }
@@ -245,45 +250,15 @@ const DEFAULT_CUBE_COLORS = {
   R: "#b71234",
   L: "#ff5800",
 };
-const CUBE_COLORS_KEY = "x3.cubeColors";
 
 let cubeColors = { ...DEFAULT_CUBE_COLORS };
-
-function saveCubeColors() {
-  try {
-    localStorage.setItem(CUBE_COLORS_KEY, JSON.stringify(cubeColors));
-  } catch (err) {
-    /* ignore */
-  }
-}
 
 function applyCubeColors() {
   try {
     el.cube.stickers = { ...cubeColors };
-    saveCubeColors();
   } catch (err) {
     /* cube not upgraded yet; retried on next scramble */
   }
-}
-
-function initCubeColors() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(CUBE_COLORS_KEY));
-    if (saved && typeof saved === "object") {
-      cubeColors = { ...DEFAULT_CUBE_COLORS, ...saved };
-    }
-  } catch (err) {
-    /* ignore */
-  }
-  el.colorRows.forEach((row) => {
-    const input = row.querySelector('input[type="color"]');
-    input.value = cubeColors[row.dataset.face];
-    input.addEventListener("input", () => {
-      cubeColors[row.dataset.face] = input.value;
-      applyCubeColors();
-    });
-  });
-  applyCubeColors();
 }
 
 /* ---------- settings ---------- */
@@ -291,14 +266,11 @@ function initCubeColors() {
 const SETTINGS_KEY = "x3.settings";
 const SESSION_KEY = "x3.session";
 
-const FONT_OPTIONS = {
-  display: [
-    "Space Grotesk", "Inter", "Manrope", "Sora", "Outfit", "Public Sans", "IBM Plex Sans",
-  ],
-  mono: [
-    "Space Mono", "JetBrains Mono", "IBM Plex Mono", "Fira Code", "Roboto Mono", "DM Mono", "Inconsolata",
-  ],
-};
+const FONT_OPTIONS = [
+  "Space Grotesk", "Space Mono", "Inter", "JetBrains Mono", "Manrope",
+  "IBM Plex Sans", "IBM Plex Mono", "Fira Code", "Sora", "Outfit",
+  "Roboto Mono", "DM Mono", "Inconsolata", "Public Sans",
+];
 
 function loadFont(name) {
   if (!name) return;
@@ -312,12 +284,11 @@ function loadFont(name) {
 }
 
 function applySettings() {
-  document.documentElement.style.setProperty("--scramble-size", `${state.settings.scrambleSize}%`);
+  document.documentElement.style.setProperty("--scramble-size", `${state.settings.scrambleSize / 100}`);
   el.scrambleSizeValue.textContent = `${state.settings.scrambleSize}%`;
   el.scrambleVisible.checked = !!state.settings.showScramble;
   document.body.classList.toggle("scramble-hidden", !state.settings.showScramble);
   el.cubeVisible.checked = state.settings.cubeVisible;
-  el.stickyColors.checked = !!state.settings.stickyCubeColors;
   document.body.classList.toggle("cube-hidden", !state.settings.cubeVisible);
   document.documentElement.style.setProperty("--cube-size", `${state.settings.cubeSize}px`);
   el.cubeSizeValue.textContent = String(state.settings.cubeSize);
@@ -336,11 +307,7 @@ function fillFontSelect(sel, names, current) {
     o.textContent = n;
     sel.appendChild(o);
   }
-  sel.value = FONT_OPTIONS[sel === el.fontDisplay ? "display" : "mono"].includes(current)
-    ? current
-    : sel === el.fontDisplay
-    ? "Space Grotesk"
-    : "Space Mono";
+  sel.value = names.includes(current) ? current : names[0];
 }
 
 function initSettings() {
@@ -354,14 +321,16 @@ function initSettings() {
     scrambleSize: 100,
     showScramble: true,
     cubeVisible: true,
-    stickyCubeColors: false,
     cubeSize: 118,
     fontDisplay: "Space Grotesk",
     fontMono: "Space Mono",
     ...(saved || {}),
   };
-  fillFontSelect(el.fontDisplay, FONT_OPTIONS.display, state.settings.fontDisplay);
-  fillFontSelect(el.fontMono, FONT_OPTIONS.mono, state.settings.fontMono);
+  if (saved && saved.font) {
+    state.settings.fontDisplay = saved.font;
+    state.settings.fontMono = saved.font;
+  }
+  fillFontSelect(el.font, FONT_OPTIONS, state.settings.fontDisplay);
   el.scrambleSize.value = state.settings.scrambleSize;
   el.cubeSize.value = state.settings.cubeSize;
   applySettings();
@@ -385,18 +354,14 @@ function initSettings() {
     saveSettings();
     applySettings();
   });
-  el.stickyColors.addEventListener("change", () => {
-    state.settings.stickyCubeColors = el.stickyColors.checked;
-    saveSettings();
-  });
-  const onFont = () => {
-    state.settings.fontDisplay = el.fontDisplay.value;
-    state.settings.fontMono = el.fontMono.value;
+  el.font.addEventListener("change", () => {
+    const f = el.font.value;
+    state.settings.font = f;
+    state.settings.fontDisplay = f;
+    state.settings.fontMono = f;
     saveSettings();
     applySettings();
-  };
-  el.fontDisplay.addEventListener("change", onFont);
-  el.fontMono.addEventListener("change", onFont);
+  });
 }
 
 function saveSettings() {
@@ -452,36 +417,24 @@ function applyTheme(id) {
       "--shadow",
       theme.dark ? "0 6px 18px rgba(0,0,0,0.55)" : "0 6px 18px rgba(16,18,26,0.12)"
     );
-    if (!state.settings.stickyCubeColors) {
-      const tc = cubeColorsFromTheme(theme);
-      if (tc) {
-        cubeColors = tc;
-        applyCubeColors();
-        syncCubeColorInputs();
-      }
+    const tc = cubeColorsFromTheme(theme);
+    if (tc) {
+      cubeColors = tc;
+      applyCubeColors();
     }
   } else {
     root.removeAttribute("style");
     root.dataset.theme = theme.dark ? "dark" : "light";
-    if (!state.settings.stickyCubeColors) {
-      cubeColors = { ...DEFAULT_CUBE_COLORS };
-      applyCubeColors();
-      syncCubeColorInputs();
-    }
+    cubeColors = { ...DEFAULT_CUBE_COLORS };
+    applyCubeColors();
   }
+  if (window.refreshFavicon) window.refreshFavicon();
 }
 
 function cubeColorsFromTheme(theme) {
   if (!theme.colors) return null;
   const c = theme.colors;
   return { U: c.face, D: c.brass, F: c.ok, B: c.accent, R: c.bad, L: c.ink };
-}
-
-function syncCubeColorInputs() {
-  el.colorRows.forEach((row) => {
-    const input = row.querySelector('input[type="color"]');
-    input.value = cubeColors[row.dataset.face];
-  });
 }
 
 function initTheme() {
@@ -493,29 +446,10 @@ function initTheme() {
   applyTheme(window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
 }
 
-function getPinnedThemes() {
-  try {
-    return JSON.parse(localStorage.getItem("x3.pinnedThemes")) || [];
-  } catch (e) {
-    return [];
-  }
-}
-
-function renderThemesList(listEl, searchEl, view) {
+function renderThemesList(listEl, searchEl) {
   listEl.innerHTML = "";
   const f = (searchEl.value || "").toLowerCase();
-  const pinned = getPinnedThemes();
-  let all = [...SYSTEM_THEMES, ...(window.THEMES || [])];
-  const mode = view || state.themesView || "pinned";
-  if (mode === "pinned") {
-    all = all.filter((t) => !t.colors || pinned.includes(t.id));
-    if (!all.some((t) => t.colors)) {
-      const note = document.createElement("div");
-      note.className = "themes-note";
-      note.textContent = "no pinned themes yet — open explore → themes and pin some";
-      listEl.appendChild(note);
-    }
-  }
+  const all = [...SYSTEM_THEMES, ...(window.THEMES || [])];
   const grouped = {};
   for (const t of all) {
     if (f && !t.name.toLowerCase().includes(f)) continue;
@@ -544,25 +478,7 @@ function renderThemesList(listEl, searchEl, view) {
         i.style.background = col;
         sw.appendChild(i);
       }
-      const pinBtn = document.createElement("button");
-      pinBtn.type = "button";
-      pinBtn.className = "theme-pin" + (pinned.includes(t.id) ? " pinned" : "");
-      pinBtn.textContent = pinned.includes(t.id) ? "pinned" : "pin";
-      pinBtn.title = "pin/unpin theme";
-      pinBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const arr = getPinnedThemes();
-        const idx = arr.indexOf(t.id);
-        if (idx === -1) arr.push(t.id);
-        else arr.splice(idx, 1);
-        try {
-          localStorage.setItem("x3.pinnedThemes", JSON.stringify(arr));
-        } catch (err) {
-          /* ignore */
-        }
-        refreshThemeLists();
-      });
-      btn.append(name, sw, pinBtn);
+      btn.append(name, sw);
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
         applyTheme(t.id);
@@ -685,6 +601,11 @@ function renderEventList() {
 async function switchEvent(id) {
   if (id === state.event) return;
   state.event = id;
+  try {
+    localStorage.setItem("x3.event", id);
+  } catch (err) {
+    /* ignore */
+  }
   state.scrambleList = [];
   state.scrambleIndex = -1;
   const ev = EVENTS.find((e) => e.id === id);
@@ -696,6 +617,7 @@ async function switchEvent(id) {
       /* ignore */
     }
   }
+  applyEventScale();
   renderEventList();
   await loadSessionsForEvent();
   await nextScramble();
@@ -814,14 +736,10 @@ function renderStats(session) {
   set(statEl.curMo3, statEl.curMo3, fmtAvg(session.current.mo3), session.current.mo3 === "DNF");
   set(statEl.curAo5, statEl.curAo5, fmtAvg(session.current.ao5), session.current.ao5 === "DNF");
   set(statEl.curAo12, statEl.curAo12, fmtAvg(session.current.ao12), session.current.ao12 === "DNF");
-  set(statEl.curAo100, statEl.curAo100, fmtAvg(session.current.ao100), session.current.ao100 === "DNF");
   set(statEl.bestTime, statEl.bestTime, fmtTimeMs(session.bestTime), false);
   set(statEl.bestMo3, statEl.bestMo3, fmtAvg(session.best.mo3), session.best.mo3 === "DNF");
   set(statEl.bestAo5, statEl.bestAo5, fmtAvg(session.best.ao5), session.best.ao5 === "DNF");
   set(statEl.bestAo12, statEl.bestAo12, fmtAvg(session.best.ao12), session.best.ao12 === "DNF");
-  set(statEl.bestAo100, statEl.bestAo100, fmtAvg(session.best.ao100), session.best.ao100 === "DNF");
-  statEl.count.textContent = String(session.count);
-  statEl.mean.textContent = fmtTimeMs(session.mean);
 }
 
 function renderSolves() {
@@ -842,9 +760,6 @@ function renderSolves() {
   );
   const bestAo12 = Math.min(
     ...rollups.map((r) => (r.ao12 === "DNF" || r.ao12 === null ? Infinity : r.ao12))
-  );
-  const bestAo100 = Math.min(
-    ...rollups.map((r) => (r.ao100 === "DNF" || r.ao100 === null ? Infinity : r.ao100))
   );
   [...state.solves].reverse().forEach((solve, i) => {
     const chronIdx = state.solves.length - 1 - i;
@@ -883,7 +798,7 @@ function renderSolves() {
       return cell;
     };
 
-    li.append(idx, time, mk(r.ao5, bestAo5), mk(r.ao12, bestAo12), mk(r.ao100, bestAo100));
+    li.append(idx, time, mk(r.ao5, bestAo5), mk(r.ao12, bestAo12));
     el.solveList.appendChild(li);
   });
 }
@@ -896,6 +811,7 @@ function renderSparkline() {
   const show = nonNull.length >= 2;
   el.sparklineBest.classList.toggle("hidden", !show);
   el.sparklineWorst.classList.toggle("hidden", !show);
+  el.sparkEmpty.hidden = show;
   if (!show) {
     el.sparklinePath.setAttribute("d", "");
     return;
@@ -952,11 +868,6 @@ async function patchPenalty(solve, penalty) {
 async function deleteSolve(target) {
   const id = typeof target === "number" ? target : target.id;
   await api(`/api/solves/${id}`, { method: "DELETE" });
-  await loadSession(state.sessionId);
-}
-
-async function clearSession() {
-  await api(`/api/sessions/${state.sessionId}/solves`, { method: "DELETE" });
   await loadSession(state.sessionId);
 }
 
@@ -1375,6 +1286,7 @@ window.addEventListener("blur", holdCancel);
 el.instrument.addEventListener("pointerdown", handlePointer);
 el.instrument.addEventListener("pointerup", handlePointer);
 el.instrument.addEventListener("pointerleave", handlePointer);
+el.instrument.addEventListener("contextmenu", (e) => e.preventDefault());
 
 el.sessionBtn.addEventListener("click", (e) => {
   e.stopPropagation();
@@ -1387,7 +1299,6 @@ el.eventBtn.addEventListener("click", (e) => {
   el.eventPop.hidden = !el.eventPop.hidden;
 });
 el.newSession.addEventListener("click", createSession);
-el.clearSession.addEventListener("click", clearSession);
 document.addEventListener("click", (e) => {
   if (!el.sessionPop.hidden && !e.target.closest(".session-picker")) {
     el.sessionPop.hidden = true;
@@ -1428,13 +1339,6 @@ el.settingsBtn.addEventListener("click", (e) => {
 el.settingsThemesSearch.addEventListener("input", () =>
   renderThemesList(el.settingsThemesList, el.settingsThemesSearch)
 );
-document.querySelectorAll(".tv-btn").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    state.themesView = btn.dataset.view;
-    document.querySelectorAll(".tv-btn").forEach((b) => b.classList.toggle("active", b === btn));
-    refreshThemeLists();
-  });
-});
 
 el.nextScramble = document.getElementById("next-scramble");
 el.prevScramble = document.getElementById("prev-scramble");
@@ -1459,8 +1363,15 @@ el.confirmModal.querySelectorAll("[data-close-confirm]").forEach((btn) => {
 });
 
 async function init() {
+  try {
+    const savedEvent = localStorage.getItem("x3.event");
+    if (savedEvent && EVENTS.some((e) => e.id === savedEvent)) {
+      state.event = savedEvent;
+    }
+  } catch (err) {
+    /* ignore */
+  }
   tickReadout(0);
-  initCubeColors();
   initSettings();
   initTheme();
   initRecordCard();
@@ -1474,6 +1385,7 @@ async function init() {
       /* ignore */
     }
   }
+  applyEventScale();
   renderEventList();
   await loadSessionsForEvent();
   await nextScramble();

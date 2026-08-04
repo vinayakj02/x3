@@ -6,3 +6,15 @@ __pycache__/
 *.db-shm
 .pytest_cache/
 .DS_Store
+
+# private experiment pages (not for public repo)
+app/static/explore.html
+app/static/viz.html
+app/static/themes.html
+app/static/celebrations.html
+app/static/logos.html
+app/static/logos-kp.html
+app/static/layouts.html
+
+# private experiments directory (not for public repo)
+experiments/

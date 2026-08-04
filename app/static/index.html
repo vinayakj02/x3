@@ -2,13 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>x3</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>x3 timer</title>
+  <link rel="icon" id="favicon" href="data:," />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.cubing.net/v0/js/cubing/twisty" type="module"></script>
-  <link rel="stylesheet" href="styles.css?v=24" />
+  <link rel="stylesheet" href="styles.css?v=42" />
 </head>
 <body>
   <header class="topbar">
@@ -29,10 +30,6 @@
         <button id="themes-btn" class="ghost-btn" type="button">themes</button>
         <div class="themes-pop" id="themes-pop" hidden>
           <input id="themes-search" class="themes-search" type="search" placeholder="search themes…" />
-          <div class="themes-filter">
-            <button class="tv-btn active" data-view="pinned" type="button">pinned</button>
-            <button class="tv-btn" data-view="all" type="button">all</button>
-          </div>
           <div class="themes-list" id="themes-list"></div>
         </div>
       </div>
@@ -56,10 +53,6 @@
               <input id="cube-visible" type="checkbox" checked />
               <span>show cube</span>
             </label>
-            <label class="switch-row">
-              <input id="sticky-colors" type="checkbox" />
-              <span>keep my cube colors (theme won't override)</span>
-            </label>
             <div class="settings-range">
               <label class="switch-row" for="cube-size" style="min-width:72px">size</label>
               <input id="cube-size" type="range" min="60" max="220" step="5" value="118" />
@@ -67,34 +60,15 @@
             </div>
           </div>
           <div class="settings-section">
-            <h4>cube colors</h4>
-            <div class="color-grid">
-              <div class="color-row" data-face="U"><span class="color-face">U</span><input type="color" /></div>
-              <div class="color-row" data-face="D"><span class="color-face">D</span><input type="color" /></div>
-              <div class="color-row" data-face="F"><span class="color-face">F</span><input type="color" /></div>
-              <div class="color-row" data-face="B"><span class="color-face">B</span><input type="color" /></div>
-              <div class="color-row" data-face="R"><span class="color-face">R</span><input type="color" /></div>
-              <div class="color-row" data-face="L"><span class="color-face">L</span><input type="color" /></div>
-            </div>
-          </div>
-          <div class="settings-section">
             <h4>fonts</h4>
             <div class="settings-range">
-              <label class="switch-row" for="font-display" style="min-width:72px">display</label>
-              <select id="font-display" class="settings-select"></select>
-            </div>
-            <div class="settings-range">
-              <label class="switch-row" for="font-mono" style="min-width:72px">data</label>
-              <select id="font-mono" class="settings-select"></select>
+              <label class="switch-row" for="font" style="min-width:72px">font</label>
+              <select id="font" class="settings-select"></select>
             </div>
           </div>
           <div class="settings-section">
             <h4>themes</h4>
             <input id="settings-themes-search" class="themes-search" type="search" placeholder="search themes…" />
-            <div class="themes-filter">
-              <button class="tv-btn active" data-view="pinned" type="button">pinned</button>
-              <button class="tv-btn" data-view="all" type="button">all</button>
-            </div>
             <div class="themes-list" id="settings-themes-list"></div>
           </div>
         </div>
@@ -117,35 +91,29 @@
       </div>
 
       <section class="stats" aria-label="Session statistics">
-        <div class="stat-row stat-row-head">
-          <span class="stat-label"></span>
-          <span class="stat-head-cell">time</span>
-          <span class="stat-head-cell">mo3</span>
-          <span class="stat-head-cell">ao5</span>
-          <span class="stat-head-cell">ao12</span>
-          <span class="stat-head-cell">ao100</span>
+        <div class="stat-card">
+          <h4 class="stat-card-title">current</h4>
+          <div class="stat-card-row"><span>time</span><span class="stat-value" id="stat-cur-time">—</span></div>
+          <div class="stat-card-row"><span>mo3</span><span class="stat-value" id="stat-cur-mo3">—</span></div>
+          <div class="stat-card-row"><span>ao5</span><span class="stat-value" id="stat-cur-ao5">—</span></div>
+          <div class="stat-card-row"><span>ao12</span><span class="stat-value" id="stat-cur-ao12">—</span></div>
         </div>
-        <div class="stat-row">
-          <span class="stat-label">current</span>
-          <span class="stat-value" id="stat-cur-time">—</span>
-          <span class="stat-value" id="stat-cur-mo3">—</span>
-          <span class="stat-value" id="stat-cur-ao5">—</span>
-          <span class="stat-value" id="stat-cur-ao12">—</span>
-          <span class="stat-value" id="stat-cur-ao100">—</span>
-        </div>
-        <div class="stat-row">
-          <span class="stat-label">best</span>
-          <span class="stat-value" id="stat-best-time">—</span>
-          <span class="stat-value" id="stat-best-mo3">—</span>
-          <span class="stat-value" id="stat-best-ao5">—</span>
-          <span class="stat-value" id="stat-best-ao12">—</span>
-          <span class="stat-value" id="stat-best-ao100">—</span>
+        <div class="stat-card">
+          <h4 class="stat-card-title">best</h4>
+          <div class="stat-card-row"><span>time</span><span class="stat-value" id="stat-best-time">—</span></div>
+          <div class="stat-card-row"><span>mo3</span><span class="stat-value" id="stat-best-mo3">—</span></div>
+          <div class="stat-card-row"><span>ao5</span><span class="stat-value" id="stat-best-ao5">—</span></div>
+          <div class="stat-card-row"><span>ao12</span><span class="stat-value" id="stat-best-ao12">—</span></div>
         </div>
       </section>
 
-      <div class="session-note"><span id="stat-count">0</span> solves · mean <span id="stat-mean">—</span></div>
-
       <div class="spark-wrap">
+        <div class="spark-empty" id="spark-empty" hidden>
+          <svg viewBox="0 0 120 30" aria-hidden="true">
+            <path class="spark-empty-path" d="M4 22 C 18 10, 26 26, 40 18 S 62 6, 76 14 S 100 24, 116 10" />
+          </svg>
+          <span>graph will be here</span>
+        </div>
         <svg id="sparkline" class="sparkline" viewBox="0 0 320 44" aria-hidden="true">
           <path id="sparkline-path" class="sparkline-path" />
           <circle id="sparkline-best" class="sparkline-dot best" r="2.5" />
@@ -155,10 +123,9 @@
 
       <div class="solves-header">
         <h2 class="solves-title">history</h2>
-        <button id="clear-session" class="ghost-btn danger" type="button">clear</button>
       </div>
       <div class="solve-cols">
-        <span>#</span><span>time</span><span>ao5</span><span>ao12</span><span>ao100</span>
+        <span>#</span><span>time</span><span>ao5</span><span>ao12</span>
       </div>
       <ol class="solve-list" id="solve-list"></ol>
     </aside>
@@ -221,8 +188,9 @@
     </div>
   </div>
 
-  <script src="themes.js"></script>
+  <script src="logo.js?v=3"></script>
+  <script src="themes.js?v=2"></script>
   <script src="celebrate.js"></script>
-  <script type="module" src="app.js?v=22"></script>
+  <script type="module" src="app.js?v=31"></script>
 </body>
 </html>
