@@ -112,10 +112,18 @@ const EVENTS = [
   { id: "333", name: "3x3", puzzle: "3x3x3" },
   { id: "333oh", name: "3x3 OH", puzzle: "3x3x3" },
   { id: "333bf", name: "3x3 BLD", puzzle: "3x3x3" },
+  { id: "333fm", name: "FMC", puzzle: "3x3x3" },
   { id: "444", name: "4x4", puzzle: "4x4x4", scale: 1.3 },
   { id: "555", name: "5x5", puzzle: "5x5x5", scale: 1.5 },
   { id: "666", name: "6x6", puzzle: "6x6x6", scale: 1.7 },
   { id: "777", name: "7x7", puzzle: "7x7x7", scale: 1.9 },
+  { id: "444bf", name: "4x4 BLD", puzzle: "4x4x4", scale: 1.3 },
+  { id: "555bf", name: "5x5 BLD", puzzle: "5x5x5", scale: 1.5 },
+  { id: "clock", name: "Clock", puzzle: "clock", scale: 1.1 },
+  { id: "minx", name: "Megaminx", puzzle: "megaminx", scale: 1.7 },
+  { id: "pyram", name: "Pyraminx", puzzle: "pyraminx", scale: 1.1 },
+  { id: "skewb", name: "Skewb", puzzle: "skewb", scale: 1.1 },
+  { id: "sq1", name: "Square-1", puzzle: "square-1", scale: 1.2 },
 ];
 
 function applyEventScale() {
