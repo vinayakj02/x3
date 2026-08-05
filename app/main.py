@@ -25,7 +25,8 @@ SECURITY_HEADERS = {
 
 CONTENT_SECURITY_POLICY = (
     "default-src 'self'; "
-    "script-src 'self' https://cdn.cubing.net; "
+    "script-src 'self' https://cdn.cubing.net 'wasm-unsafe-eval'; "
+    "worker-src 'self' blob: https://cdn.cubing.net; "
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
     "font-src 'self' https://fonts.gstatic.com; "
     "img-src 'self' data: https://lh3.googleusercontent.com; "
