@@ -22,3 +22,7 @@ Seed demo data (optional):
 ```sh
 docker compose exec timer python3 -m app.seed
 ```
+
+## Storage
+
+Signed-out usage stores data locally in the browser; sign-in is optional and stores data server-side. Schema migrates automatically on startup; no extra runtime dependencies.

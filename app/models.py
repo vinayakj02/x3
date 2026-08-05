@@ -8,10 +8,12 @@ Penalty = Literal["NONE", "PLUS_TWO", "DNF"]
 class SessionCreate(BaseModel):
     name: str = Field(default="Session", min_length=1, max_length=64)
     event: str = Field(default="333", max_length=16)
+    client_id: str = Field(default="", max_length=64)
 
 
 class SessionOut(BaseModel):
     id: int
+    client_id: str
     name: str
     event: str
     created_at: str
@@ -19,7 +21,8 @@ class SessionOut(BaseModel):
 
 
 class SolveCreate(BaseModel):
-    session_id: int
+    session_client_id: str = Field(max_length=64)
+    client_id: str = Field(default="", max_length=64)
     scramble: str
     time_ms: int = Field(gt=0)
     penalty: Penalty = "NONE"
@@ -31,7 +34,9 @@ class SolvePatch(BaseModel):
 
 class SolveOut(BaseModel):
     id: int
+    client_id: str
     session_id: int
+    session_client_id: str
     scramble: str
     time_ms: int
     adjusted_ms: int
@@ -54,3 +59,31 @@ class StatsOut(BaseModel):
     best_ao5: AverageOut
     current_ao12: AverageOut
     best_ao12: AverageOut
+
+
+class SyncSession(BaseModel):
+    client_id: str = Field(max_length=64)
+    name: str = Field(max_length=64)
+    event: str = Field(default="333", max_length=16)
+    created_at: str = ""
+
+
+class SyncSolve(BaseModel):
+    client_id: str = Field(max_length=64)
+    session_client_id: str = Field(max_length=64)
+    scramble: str
+    time_ms: int = Field(gt=0)
+    penalty: Penalty = "NONE"
+    solved_at: str = ""
+
+
+class SyncIn(BaseModel):
+    sessions: list[SyncSession] = []
+    solves: list[SyncSolve] = []
+    deleted_sessions: list[str] = []
+    deleted_solves: list[str] = []
+
+
+class SyncOut(BaseModel):
+    sessions: list[SessionOut]
+    solves: list[SolveOut]

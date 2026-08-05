@@ -7,6 +7,7 @@ Usage:
 
 import random
 import sys
+import uuid
 
 from app.db import get_conn
 
@@ -37,7 +38,11 @@ def make_times(n: int, mean_s: float, sd_s: float, rng: random.Random) -> list[i
 
 
 def insert_session(conn, name: str, times: list[int], plus_two: int, dnf: int, rng: random.Random) -> int:
-    cur = conn.execute("INSERT INTO sessions (name, event) VALUES (?, ?)", (name, "333"))
+    cid = uuid.uuid4().hex
+    cur = conn.execute(
+        "INSERT INTO sessions (name, event, client_id) VALUES (?, ?, ?)",
+        (name, "333", cid),
+    )
     session_id = cur.lastrowid
 
     indices = list(range(len(times)))
@@ -53,8 +58,8 @@ def insert_session(conn, name: str, times: list[int], plus_two: int, dnf: int, r
         else:
             penalty = "NONE"
         conn.execute(
-            "INSERT INTO solves (session_id, scramble, time_ms, penalty) VALUES (?, ?, ?, ?)",
-            (session_id, make_scramble(), t, penalty),
+            "INSERT INTO solves (session_id, session_client_id, client_id, scramble, time_ms, penalty) VALUES (?, ?, ?, ?, ?, ?)",
+            (session_id, cid, uuid.uuid4().hex, make_scramble(), t, penalty),
         )
     return session_id
 

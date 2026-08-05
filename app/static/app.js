@@ -1,4 +1,4 @@
-const API = "";
+import { store, auth } from "./store.js";
 
 const state = {
   phase: "idle", // idle | armed | running | stopping
@@ -70,6 +70,9 @@ const el = {
   confirmText: document.getElementById("confirm-text"),
   confirmKeep: document.getElementById("confirm-keep"),
   confirmRedo: document.getElementById("confirm-redo"),
+  signInBtn: document.getElementById("signin-btn"),
+  signOutBtn: document.getElementById("signout-btn"),
+  userName: document.getElementById("user-name"),
 };
 
 const statEl = {
@@ -181,17 +184,6 @@ function sessionMean() {
 }
 
 /* ---------- api ---------- */
-
-async function api(path, opts = {}) {
-  const res = await fetch(`${API}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    ...opts,
-  });
-  if (res.status === 204) return null;
-  const body = await res.json();
-  if (!res.ok) throw new Error(body.detail || res.statusText);
-  return body;
-}
 
 /* ---------- scramble ---------- */
 
@@ -536,24 +528,29 @@ function prevScramble() {
 /* ---------- sessions ---------- */
 
 async function loadSessionsForEvent() {
-  const all = await api("/api/sessions");
+  const all = await store.listSessions();
   state.sessions = all.filter((s) => s.event === state.event);
   if (state.sessions.length === 0) {
-    const created = await api("/api/sessions", {
-      method: "POST",
-      body: JSON.stringify({ name: "Session 1", event: state.event }),
-    });
+    const created = await store.createSession({ name: "Session 1", event: state.event });
     state.sessions = [created];
   }
   renderSessionList();
-  const saved = Number(localStorage.getItem(SESSION_KEY));
+  let saved = null;
+  try {
+    saved = localStorage.getItem(SESSION_KEY);
+  } catch (err) {
+    /* ignore */
+  }
   const target = state.sessions.find((s) => s.id === saved) || state.sessions[0];
   await loadSession(target.id);
 }
 
 function renderSessionList() {
   el.sessionPop.innerHTML = "";
-  const newestId = state.sessions.reduce((m, s) => (s.id > m ? s.id : m), 0);
+  const newest = state.sessions.reduce(
+    (a, s) => (!a || (s.created_at || "").localeCompare(a.created_at) > 0 ? s : a),
+    null
+  );
   for (const s of state.sessions) {
     const btn = document.createElement("button");
     btn.type = "button";
@@ -565,7 +562,7 @@ function renderSessionList() {
     count.className = "session-count";
     count.textContent = String(s.solve_count);
     btn.append(name, count);
-    if (s.id === newestId) {
+    if (newest && s.id === newest.id) {
       const tag = document.createElement("span");
       tag.className = "session-tag";
       tag.textContent = "recent";
@@ -630,7 +627,7 @@ async function loadSession(id) {
   } catch (err) {
     /* ignore */
   }
-  state.solves = await api(`/api/sessions/${id}/solves`);
+  state.solves = await store.listSolves(id);
   state.rollups = buildRollups(state.solves);
   const session = computeSession();
   renderStats(session);
@@ -641,10 +638,7 @@ async function loadSession(id) {
 
 async function createSession() {
   const n = state.sessions.length + 1;
-  const created = await api("/api/sessions", {
-    method: "POST",
-    body: JSON.stringify({ name: `Session ${n}`, event: state.event }),
-  });
+  const created = await store.createSession({ name: `Session ${n}`, event: state.event });
   await loadSessionsForEvent();
   await loadSession(created.id);
 }
@@ -853,10 +847,7 @@ function findSolve(id) {
 
 async function patchPenalty(solve, penalty) {
   const next = solve.penalty === penalty ? "NONE" : penalty;
-  const updated = await api(`/api/solves/${solve.id}`, {
-    method: "PATCH",
-    body: JSON.stringify({ penalty: next }),
-  });
+  const updated = await store.patchSolve(solve.id, next);
   const found = findSolve(solve.id);
   if (found) {
     found.penalty = updated.penalty;
@@ -866,8 +857,8 @@ async function patchPenalty(solve, penalty) {
 }
 
 async function deleteSolve(target) {
-  const id = typeof target === "number" ? target : target.id;
-  await api(`/api/solves/${id}`, { method: "DELETE" });
+  const id = target.id || target;
+  await store.deleteSolve(id);
   await loadSession(state.sessionId);
 }
 
@@ -1034,14 +1025,11 @@ async function stopRun(penalty = "NONE") {
   phase("stopping");
   animateTick();
   try {
-    const saved = await api("/api/solves", {
-      method: "POST",
-      body: JSON.stringify({
-        session_id: state.sessionId,
-        scramble: el.scramble.textContent,
-        time_ms: Math.max(1, Math.round(elapsed)),
-        penalty,
-      }),
+    const saved = await store.createSolve({
+      session_id: state.sessionId,
+      scramble: el.scramble.textContent,
+      time_ms: Math.max(1, Math.round(elapsed)),
+      penalty,
     });
     if (penalty === "DNF") {
       el.instrument.classList.add("flash-dnf");
@@ -1371,6 +1359,8 @@ async function init() {
   } catch (err) {
     /* ignore */
   }
+  await auth.init();
+  renderAuth();
   tickReadout(0);
   initSettings();
   initTheme();
@@ -1390,6 +1380,21 @@ async function init() {
   await loadSessionsForEvent();
   await nextScramble();
 }
+
+function renderAuth() {
+  const signedIn = auth.isSignedIn();
+  const u = auth.getUser();
+  el.signInBtn.hidden = signedIn;
+  el.signOutBtn.hidden = !signedIn;
+  el.userName.hidden = !signedIn;
+  el.userName.textContent = signedIn ? (u && (u.name || u.email)) || "signed in" : "";
+}
+
+el.signInBtn.addEventListener("click", () => auth.login());
+el.signOutBtn.addEventListener("click", async () => {
+  await auth.signOut();
+  window.location.reload();
+});
 
 init().catch((err) => {
   el.hint.textContent = "failed to load — " + err.message;

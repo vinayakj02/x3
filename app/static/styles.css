@@ -146,6 +146,23 @@ textarea {
   gap: 0.7rem;
 }
 
+.auth-area {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.user-name {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .session-btn {
   appearance: none;
   width: 100%;
