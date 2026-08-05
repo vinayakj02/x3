@@ -17,6 +17,7 @@ const state = {
   settings: {},
   scrambleList: [],
   scrambleIndex: -1,
+  pendingScramble: null,
   event: "333",
 };
 
@@ -517,17 +518,39 @@ async function generateScramble() {
   }
 }
 
-async function nextScramble() {
-  const fallback = generateFallbackScramble();
-  state.scrambleList = state.scrambleList.slice(0, state.scrambleIndex + 1);
-  state.scrambleList.push(fallback);
-  state.scrambleIndex = state.scrambleList.length - 1;
-  applyScramble(fallback);
+let scramblePrefetch = 0;
+
+async function prefetchScramble() {
+  const gen = ++scramblePrefetch;
   const moves = await generateScramble();
-  if (moves && moves !== fallback) {
-    state.scrambleList[state.scrambleIndex] = moves;
-    applyScramble(moves);
+  if (gen === scramblePrefetch && moves) {
+    state.pendingScramble = moves;
   }
+}
+
+function applyNextScramble(moves) {
+  state.scrambleList = state.scrambleList.slice(0, state.scrambleIndex + 1);
+  state.scrambleList.push(moves);
+  state.scrambleIndex = state.scrambleList.length - 1;
+  applyScramble(moves);
+  prefetchScramble();
+}
+
+function nextScramble() {
+  const ready = state.pendingScramble;
+  state.pendingScramble = null;
+  if (ready) {
+    applyNextScramble(ready);
+    return;
+  }
+  const fallback = generateFallbackScramble();
+  applyNextScramble(fallback);
+  generateScramble().then((moves) => {
+    if (moves && moves !== fallback) {
+      state.scrambleList[state.scrambleIndex] = moves;
+      applyScramble(moves);
+    }
+  });
 }
 
 function prevScramble() {
