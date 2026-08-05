@@ -248,13 +248,23 @@ export const auth = {
   },
   async init() {
     const params = new URLSearchParams(window.location.search);
-    const t = params.get("auth");
-    if (t) {
-      token = t;
+    const code = params.get("code");
+    if (code) {
       try {
-        localStorage.setItem(TOKEN_KEY, t);
+        const res = await serverApi("/api/auth/exchange", {
+          method: "POST",
+          body: JSON.stringify({ code }),
+        });
+        token = res.token || "";
+        if (token) {
+          try {
+            localStorage.setItem(TOKEN_KEY, token);
+          } catch (err) {
+            /* ignore */
+          }
+        }
       } catch (err) {
-        /* ignore */
+        /* ignore; stay in local mode */
       }
       history.replaceState({}, "", window.location.pathname + window.location.hash);
     } else {

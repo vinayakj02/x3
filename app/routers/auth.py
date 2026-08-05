@@ -1,6 +1,6 @@
 import hmac
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 
 from app.auth import (
@@ -8,12 +8,14 @@ from app.auth import (
     AuthUser,
     base_url,
     build_login_url,
-    create_token,
+    create_exchange_code,
     exchange_code,
     get_current_user,
+    redeem_exchange_code,
     revoke_token,
     upsert_user,
 )
+from app.models import AuthExchange
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -45,12 +47,20 @@ async def callback(
     try:
         info = await exchange_code(code, request)
         user_id = upsert_user(info)
-        token = create_token(user_id)
+        code_value = create_exchange_code(user_id)
     except Exception:
         return fail
-    response = RedirectResponse(f"{base}/?auth={token}", status_code=302)
+    response = RedirectResponse(f"{base}/?code={code_value}", status_code=302)
     response.delete_cookie(STATE_COOKIE, path="/")
     return response
+
+
+@router.post("/exchange")
+def exchange(payload: AuthExchange) -> dict:
+    token = redeem_exchange_code(payload.code)
+    if token is None:
+        raise HTTPException(status_code=401, detail="invalid or expired code")
+    return {"token": token}
 
 
 @router.get("/me")

@@ -5,6 +5,10 @@ from pydantic import BaseModel, Field
 Penalty = Literal["NONE", "PLUS_TWO", "DNF"]
 
 
+class AuthExchange(BaseModel):
+    code: str = Field(min_length=1, max_length=128)
+
+
 class SessionCreate(BaseModel):
     name: str = Field(default="Session", min_length=1, max_length=64)
     event: str = Field(default="333", max_length=16)

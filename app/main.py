@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
+from app.auth import purge_expired_tokens
 from app.db import init_db
 from app.routers import auth, sessions, solves, sync
 
@@ -25,6 +26,7 @@ def render_index() -> str:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    purge_expired_tokens()
     yield
 
 

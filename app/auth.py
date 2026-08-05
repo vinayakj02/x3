@@ -1,11 +1,14 @@
 import os
 import secrets
+import time
 from urllib.parse import quote
 
 import httpx
-from fastapi import Depends, Header, HTTPException, Request
+from fastapi import Header, HTTPException, Request
+from sqlalchemy import delete, or_, select, update
 
-from app.db import get_conn
+from app.db import SessionLocal
+from app.db_models import AuthCode, AuthToken, User
 
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
@@ -13,6 +16,17 @@ GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
 GOOGLE_SCOPE = "openid email profile"
 
 STATE_COOKIE = "x3_oauth_state"
+
+TOKEN_TTL_DAYS = 60
+CODE_TTL_SECONDS = 120
+
+
+def _now_iso() -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def _iso_in(seconds: int) -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() + seconds))
 
 
 def google_client_id() -> str:
@@ -72,49 +86,99 @@ async def exchange_code(code: str, request: Request) -> dict:
 
 
 def upsert_user(info: dict) -> int:
-    conn = get_conn()
-    try:
-        row = conn.execute(
-            "SELECT id FROM users WHERE google_sub = ?", (info["sub"],)
-        ).fetchone()
-        if row is None:
-            cur = conn.execute(
-                "INSERT INTO users (google_sub, email, name) VALUES (?, ?, ?)",
-                (info["sub"], info.get("email"), info.get("name")),
+    with SessionLocal() as db:
+        user = db.execute(
+            select(User).where(User.google_sub == info["sub"])
+        ).scalar_one_or_none()
+        if user is None:
+            user = User(
+                google_sub=info["sub"],
+                email=info.get("email"),
+                name=info.get("name"),
             )
-            user_id = cur.lastrowid
+            db.add(user)
+            db.commit()
+            db.refresh(user)
         else:
-            user_id = row["id"]
-            conn.execute(
-                "UPDATE users SET email = ?, name = ? WHERE id = ?",
-                (info.get("email"), info.get("name"), user_id),
-            )
-        conn.commit()
-        return user_id
-    finally:
-        conn.close()
+            user.email = info.get("email")
+            user.name = info.get("name")
+            db.commit()
+        return user.id
 
 
 def create_token(user_id: int) -> str:
     token = secrets.token_urlsafe(32)
-    conn = get_conn()
-    try:
-        conn.execute(
-            "INSERT INTO auth_tokens (token, user_id) VALUES (?, ?)", (token, user_id)
+    with SessionLocal() as db:
+        db.add(
+            AuthToken(
+                token=token,
+                user_id=user_id,
+                expires_at=_iso_in(TOKEN_TTL_DAYS * 86400),
+            )
         )
-        conn.commit()
+        db.commit()
+    return token
+
+
+def create_exchange_code(user_id: int) -> str:
+    code = secrets.token_urlsafe(32)
+    with SessionLocal() as db:
+        db.add(
+            AuthCode(
+                code=code,
+                user_id=user_id,
+                expires_at=_iso_in(CODE_TTL_SECONDS),
+            )
+        )
+        db.commit()
+    return code
+
+
+def redeem_exchange_code(code: str) -> str | None:
+    with SessionLocal() as db:
+        now = _now_iso()
+        claimed = db.execute(
+            update(AuthCode)
+            .where(
+                AuthCode.code == code,
+                AuthCode.used == 0,
+                AuthCode.expires_at > now,
+            )
+            .values(used=1)
+        )
+        if claimed.rowcount == 0:
+            return None
+        rec = db.execute(
+            select(AuthCode).where(AuthCode.code == code)
+        ).scalar_one()
+        token = secrets.token_urlsafe(32)
+        db.add(
+            AuthToken(
+                token=token,
+                user_id=rec.user_id,
+                expires_at=_iso_in(TOKEN_TTL_DAYS * 86400),
+            )
+        )
+        db.commit()
         return token
-    finally:
-        conn.close()
+
+
+def purge_expired_tokens() -> None:
+    with SessionLocal() as db:
+        now = _now_iso()
+        db.execute(
+            delete(AuthToken).where(
+                AuthToken.expires_at.is_not(None), AuthToken.expires_at <= now
+            )
+        )
+        db.execute(delete(AuthCode).where(AuthCode.expires_at <= now))
+        db.commit()
 
 
 def revoke_token(token: str) -> None:
-    conn = get_conn()
-    try:
-        conn.execute("DELETE FROM auth_tokens WHERE token = ?", (token,))
-        conn.commit()
-    finally:
-        conn.close()
+    with SessionLocal() as db:
+        db.execute(delete(AuthToken).where(AuthToken.token == token))
+        db.commit()
 
 
 def get_current_user(
@@ -123,21 +187,21 @@ def get_current_user(
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="not signed in")
     token = authorization.removeprefix("Bearer ").strip()
-    conn = get_conn()
-    try:
-        row = conn.execute(
-            """
-            SELECT u.id, u.email, u.name
-            FROM auth_tokens t JOIN users u ON u.id = t.user_id
-            WHERE t.token = ?
-            """,
-            (token,),
-        ).fetchone()
-    finally:
-        conn.close()
+    with SessionLocal() as db:
+        row = db.execute(
+            select(User.id, User.email, User.name)
+            .join(AuthToken, AuthToken.user_id == User.id)
+            .where(
+                AuthToken.token == token,
+                or_(
+                    AuthToken.expires_at.is_(None),
+                    AuthToken.expires_at > _now_iso(),
+                ),
+            )
+        ).first()
     if row is None:
         raise HTTPException(status_code=401, detail="invalid token")
-    return dict(row)
+    return {"id": row.id, "email": row.email, "name": row.name}
 
 
 AuthUser = dict

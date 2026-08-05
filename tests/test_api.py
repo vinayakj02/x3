@@ -1,30 +1,31 @@
 import os
 import tempfile
+import time
 
 os.environ["CUBETIMER_DB"] = os.path.join(tempfile.mkdtemp(), "test.db")
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
-from app.db import get_conn, init_db
+from app.db import SessionLocal, init_db
+from app.db_models import AuthCode, AuthToken, User
 from app.main import app
 
 
 @pytest.fixture(scope="module")
 def client():
     init_db()
-    conn = get_conn()
-    conn.execute(
-        "INSERT OR IGNORE INTO users (google_sub, email, name) VALUES ('sub1', 'a@b.c', 'Alice')"
-    )
-    uid = conn.execute(
-        "SELECT id FROM users WHERE google_sub = 'sub1'"
-    ).fetchone()["id"]
-    conn.execute(
-        "INSERT OR IGNORE INTO auth_tokens (token, user_id) VALUES ('tok1', ?)", (uid,)
-    )
-    conn.commit()
-    conn.close()
+    with SessionLocal() as db:
+        user = db.execute(
+            select(User).where(User.google_sub == "sub1")
+        ).scalar_one_or_none()
+        if user is None:
+            user = User(google_sub="sub1", email="a@b.c", name="Alice")
+            db.add(user)
+            db.flush()
+        db.add(AuthToken(token="tok1", user_id=user.id))
+        db.commit()
     with TestClient(app) as c:
         yield c
 
@@ -117,19 +118,67 @@ def test_solve_crud_by_client_id(client):
 
 
 def test_user_scoping(client):
-    conn = get_conn()
-    conn.execute(
-        "INSERT OR IGNORE INTO users (google_sub, email) VALUES ('sub2', 'b@b.c')"
-    )
-    uid2 = conn.execute(
-        "SELECT id FROM users WHERE google_sub = 'sub2'"
-    ).fetchone()["id"]
-    conn.execute(
-        "INSERT OR IGNORE INTO auth_tokens (token, user_id) VALUES ('tok2', ?)", (uid2,)
-    )
-    conn.commit()
-    conn.close()
+    with SessionLocal() as db:
+        user = db.execute(
+            select(User).where(User.google_sub == "sub2")
+        ).scalar_one_or_none()
+        if user is None:
+            user = User(google_sub="sub2", email="b@b.c")
+            db.add(user)
+            db.flush()
+        db.add(AuthToken(token="tok2", user_id=user.id))
+        db.commit()
 
     h2 = {"Authorization": "Bearer tok2"}
     assert client.get("/api/sessions", headers=h2).json() == []
     assert client.get("/api/sessions/s1/solves", headers=h2).status_code == 404
+
+
+def _uid(sub):
+    with SessionLocal() as db:
+        return db.execute(
+            select(User.id).where(User.google_sub == sub)
+        ).scalar_one()
+
+
+def _iso(offset_s):
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() + offset_s))
+
+
+def test_exchange_code_single_use(client):
+    with SessionLocal() as db:
+        db.add(AuthCode(code="c1", user_id=_uid("sub1"), expires_at=_iso(3600)))
+        db.commit()
+
+    r1 = client.post("/api/auth/exchange", json={"code": "c1"})
+    assert r1.status_code == 200
+    token = r1.json()["token"]
+    assert token
+    me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.status_code == 200
+    assert me.json()["email"] == "a@b.c"
+
+    r2 = client.post("/api/auth/exchange", json={"code": "c1"})
+    assert r2.status_code == 401
+
+
+def test_exchange_code_expired(client):
+    with SessionLocal() as db:
+        db.add(AuthCode(code="c2", user_id=_uid("sub1"), expires_at=_iso(-3600)))
+        db.commit()
+
+    assert client.post("/api/auth/exchange", json={"code": "c2"}).status_code == 401
+    assert client.post("/api/auth/exchange", json={"code": "bogus"}).status_code == 401
+
+
+def test_expired_token_rejected(client):
+    with SessionLocal() as db:
+        db.add(
+            AuthToken(token="tok-exp", user_id=_uid("sub1"), expires_at=_iso(-3600))
+        )
+        db.commit()
+
+    assert (
+        client.get("/api/auth/me", headers={"Authorization": "Bearer tok-exp"}).status_code
+        == 401
+    )
