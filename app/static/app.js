@@ -218,18 +218,95 @@ function sessionMean() {
 
 /* ---------- scramble ---------- */
 
-const SCRAMBLE_FACES = ["U", "D", "L", "R", "F", "B"];
+const FALLBACK_SPECS = {
+  "222": { count: 11, moves: ["R", "L", "U", "D", "F", "B"] },
+  "333": { count: 21, moves: ["R", "L", "U", "D", "F", "B"] },
+  "333oh": { count: 21, moves: ["R", "L", "U", "D", "F", "B"] },
+  "333bf": { count: 21, moves: ["R", "L", "U", "D", "F", "B"] },
+  "444": { count: 44, moves: ["R", "Rw", "U", "Uw", "L", "Lw", "F", "Fw", "B", "Bw", "D", "Dw"] },
+  "444bf": { count: 44, moves: ["R", "Rw", "U", "Uw", "L", "Lw", "F", "Fw", "B", "Bw", "D", "Dw"] },
+  "555": { count: 60, moves: ["R", "Rw", "3Rw", "U", "Uw", "3Uw", "L", "Lw", "3Lw", "F", "Fw", "3Fw", "B", "Bw", "3Bw", "D", "Dw", "3Dw"] },
+  "555bf": { count: 60, moves: ["R", "Rw", "3Rw", "U", "Uw", "3Uw", "L", "Lw", "3Lw", "F", "Fw", "3Fw", "B", "Bw", "3Bw", "D", "Dw", "3Dw"] },
+  "666": { count: 80, moves: ["R", "Rw", "3Rw", "U", "Uw", "3Uw", "L", "Lw", "3Lw", "F", "Fw", "3Fw", "B", "Bw", "3Bw", "D", "Dw", "3Dw"] },
+  "777": { count: 100, moves: ["R", "Rw", "3Rw", "U", "Uw", "3Uw", "L", "Lw", "3Lw", "F", "Fw", "3Fw", "B", "Bw", "3Bw", "D", "Dw", "3Dw"] },
+  clock: { count: 18, clock: true },
+  minx: { count: 70, minx: true },
+  kilominx: { count: 32, minx: true },
+  pyram: { count: 12, moves: ["R", "L", "U", "B"], tips: true },
+  master_tetraminx: { count: 26, moves: ["R", "L", "U", "B"], tips: true },
+  skewb: { count: 11, moves: ["R", "L", "U", "B"] },
+  sq1: { count: 32, sq1: true },
+  fto: { count: 28, moves: ["R", "L", "U", "B", "BR", "BL", "F", "D"] },
+  redi_cube: { count: 24, moves: ["R", "L", "U", "D", "F", "B"] },
+  baby_fto: { count: 20, moves: ["R", "L", "U", "B", "BR", "BL", "F", "D"] },
+};
 const SCRAMBLE_SUFFIXES = ["", "'", "2"];
 
-function generateFallbackScramble(length = 21) {
+function _randChoice(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function _clockScramble(count) {
+  const pins = ["UR", "DR", "DL", "UL", "U", "R", "D", "L", "ALL"];
+  const vals = ["-5", "-4", "-3", "-2", "-1", "0", "1", "2", "3", "4", "5", "6"];
+  const out = [];
+  let prev = "";
+  while (out.length < count) {
+    const m = _randChoice(pins);
+    if (m === prev) continue;
+    out.push(m + _randChoice(vals));
+    prev = m;
+    if (out.length < count && Math.random() < 0.2) {
+      out.push("y2");
+      prev = "y2";
+    }
+  }
+  return out.join(" ");
+}
+
+function _minxScramble(count) {
+  const moves = ["R++", "R--", "D++", "D--", "U", "U'"];
+  const out = [];
+  let prev = "";
+  while (out.length < count) {
+    const m = _randChoice(moves);
+    const base = m.replace(/[+'-]/g, "");
+    if (base === prev) continue;
+    out.push(m);
+    prev = base;
+  }
+  return out.join(" ");
+}
+
+function _sq1Scramble(count) {
+  const vals = ["-5", "-4", "-3", "-2", "-1", "0", "1", "2", "3", "4", "5"];
+  const pairs = [];
+  for (let i = 0; i < Math.ceil(count / 2); i++) {
+    pairs.push(`(${_randChoice(vals)},${_randChoice(vals)})`);
+  }
+  return pairs.join(" / ");
+}
+
+function generateFallbackScramble(eventId = state.event) {
+  const spec = FALLBACK_SPECS[eventId] || FALLBACK_SPECS["333"];
+  if (spec.clock) return _clockScramble(spec.count);
+  if (spec.minx) return _minxScramble(spec.count);
+  if (spec.sq1) return _sq1Scramble(spec.count);
   const moves = [];
   let prev = "";
-  while (moves.length < length) {
-    const face = SCRAMBLE_FACES[Math.floor(Math.random() * SCRAMBLE_FACES.length)];
-    if (face === prev) continue;
-    const suffix = SCRAMBLE_SUFFIXES[Math.floor(Math.random() * SCRAMBLE_SUFFIXES.length)];
-    moves.push(face + suffix);
-    prev = face;
+  while (moves.length < spec.count) {
+    const move = _randChoice(spec.moves);
+    const base = move.replace(/^[0-9]+/, "").replace(/w$/, "");
+    if (base === prev) continue;
+    moves.push(move + _randChoice(SCRAMBLE_SUFFIXES));
+    prev = base;
+  }
+  if (spec.tips) {
+    const tips = ["l", "r", "u", "b"];
+    const n = 3 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < n; i++) {
+      moves.push(_randChoice(tips) + _randChoice(["", "'"]));
+    }
   }
   return moves.join(" ");
 }
@@ -673,6 +750,8 @@ async function switchEvent(id) {
   }
   state.scrambleList = [];
   state.scrambleIndex = -1;
+  state.pendingScramble = null;
+  scramblePrefetch++; // discard any in-flight prefetch from the old event
   const ev = EVENTS.find((e) => e.id === id);
   if (ev) {
     try {
