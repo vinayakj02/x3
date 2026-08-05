@@ -112,7 +112,6 @@ const EVENTS = [
   { id: "333", name: "3x3", puzzle: "3x3x3" },
   { id: "333oh", name: "3x3 OH", puzzle: "3x3x3" },
   { id: "333bf", name: "3x3 BLD", puzzle: "3x3x3" },
-  { id: "333fm", name: "FMC", puzzle: "3x3x3" },
   { id: "444", name: "4x4", puzzle: "4x4x4", scale: 1.3 },
   { id: "555", name: "5x5", puzzle: "5x5x5", scale: 1.5 },
   { id: "666", name: "6x6", puzzle: "6x6x6", scale: 1.7 },
