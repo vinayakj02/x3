@@ -77,6 +77,10 @@ const el = {
   profilePopAvatar: document.getElementById("profile-pop-avatar"),
   profilePopName: document.getElementById("profile-pop-name"),
   profileEmail: document.getElementById("profile-email"),
+  menuBtn: document.getElementById("menu-btn"),
+  drawer: document.getElementById("drawer"),
+  drawerClose: document.getElementById("drawer-close"),
+  historyToggle: document.getElementById("history-toggle"),
 };
 
 const statEl = {
@@ -91,6 +95,10 @@ const statEl = {
 };
 
 const ARMED_MS = 300;
+
+const IDLE_HINT = window.matchMedia("(pointer: coarse)").matches
+  ? "hold to start"
+  : 'hold to start · or press <kbd>space</kbd>';
 
 const EVENTS = [
   { id: "222", name: "2x2", puzzle: "2x2x2" },
@@ -222,7 +230,8 @@ function fitScramble() {
   const max = parseFloat(getComputedStyle(s).fontSize);
   const min = 9;
   const ev = EVENTS.find((e) => e.id === state.event);
-  const maxLines = ev && (ev.scale || 1) >= 1.7 ? 5 : 3;
+  const narrowPortrait = window.matchMedia("(max-width: 700px) and (orientation: portrait)").matches;
+  const maxLines = ev && (ev.scale || 1) >= 1.7 ? 5 : narrowPortrait ? 4 : 3;
   const cap = (sz) => {
     s.style.maxHeight = `${maxLines * sz * 1.55}px`;
   };
@@ -974,7 +983,7 @@ function phase(next) {
     el.instrument.classList.add("running");
     setHint("press to stop");
   } else {
-    setHint("hold to start · or press <kbd>space</kbd>");
+    setHint(IDLE_HINT);
   }
 }
 
@@ -1218,6 +1227,10 @@ function handleKey(e) {
       closeModal();
       return;
     }
+    if (el.drawer.classList.contains("open")) {
+      setDrawer(false);
+      return;
+    }
     const anyPop = [el.themesPop, el.settingsPop, el.profilePop].some(
       (p) => p && !p.hidden
     );
@@ -1334,7 +1347,50 @@ function closeOtherPops(keep) {
   });
   updatePopAria();
 }
-window.addEventListener("resize", () => fitScramble());
+
+function setDrawer(open) {
+  el.drawer.classList.toggle("open", open);
+  el.menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
+}
+el.menuBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const open = !el.drawer.classList.contains("open");
+  if (open) closeOtherPops(null);
+  setDrawer(open);
+});
+el.drawerClose.addEventListener("click", () => setDrawer(false));
+
+const HISTORY_KEY = "x3.historyCollapsed";
+
+function setHistoryCollapsed(collapsed) {
+  document.body.classList.toggle("history-collapsed", collapsed);
+  el.historyToggle.setAttribute("aria-expanded", collapsed ? "false" : "true");
+  try {
+    localStorage.setItem(HISTORY_KEY, collapsed ? "1" : "0");
+  } catch (err) {
+    /* ignore */
+  }
+}
+
+el.historyToggle.addEventListener("click", () => {
+  setHistoryCollapsed(!document.body.classList.contains("history-collapsed"));
+});
+
+function initHistoryToggle() {
+  if (!el.historyToggle) return;
+  let saved = null;
+  try {
+    saved = localStorage.getItem(HISTORY_KEY);
+  } catch (err) {
+    /* ignore */
+  }
+  setHistoryCollapsed(saved === "0" ? false : true);
+}
+
+window.addEventListener("resize", () => {
+  fitScramble();
+  if (window.innerWidth > 700) setDrawer(false);
+});
 
 el.themesBtn.addEventListener("click", (e) => {
   e.stopPropagation();
@@ -1388,6 +1444,7 @@ async function init() {
   tickReadout(0);
   initSettings();
   initTheme();
+  initHistoryToggle();
   initRecordCard();
   refreshThemeLists();
   const ev = EVENTS.find((e) => e.id === state.event);

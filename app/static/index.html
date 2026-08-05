@@ -3,13 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#e7e9ec" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#10121a" media="(prefers-color-scheme: dark)" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>x3 timer</title>
   <link rel="icon" id="favicon" href="data:," />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.cubing.net/v0/js/cubing/twisty" type="module" integrity="sha384-NS/RLzrthoePAHnoX1ny1q2BOPpsDWFiSa4KkaPu35uG7ToL1Dj/jCWkku0mLPBO" crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="styles.css?v=45" />
+  <link rel="stylesheet" href="styles.css?v=49" />
 </head>
 <body>
   <header class="topbar">
@@ -28,44 +33,50 @@
       <!-- DEV_ONLY_BEGIN -->
       <a href="explore.html" class="ghost-btn" style="text-decoration:none">explore</a>
       <!-- DEV_ONLY_END -->
-      <div class="themes-wrap">
-        <button id="themes-btn" class="ghost-btn" type="button" aria-haspopup="true" aria-expanded="false">themes</button>
-        <div class="themes-pop" id="themes-pop" hidden>
-          <input id="themes-search" class="themes-search" type="search" placeholder="search themes…" />
-          <div class="themes-list" id="themes-list"></div>
+      <div class="drawer" id="drawer">
+        <div class="drawer-head">
+          <span class="drawer-title">menu</span>
+          <button id="drawer-close" class="drawer-close" type="button" aria-label="close menu">✕</button>
         </div>
-      </div>
-      <div class="settings-wrap">
-        <button id="settings-btn" class="ghost-btn" type="button" aria-haspopup="true" aria-expanded="false">settings</button>
-        <div class="settings-pop" id="settings-pop" hidden>
-          <div class="settings-section">
-            <h4>scramble</h4>
-            <div class="settings-range">
-              <input id="scramble-size" type="range" min="70" max="150" step="5" value="100" />
-              <span class="settings-value" id="scramble-size-value">100%</span>
-            </div>
-            <label class="switch-row">
-              <input id="scramble-visible" type="checkbox" checked />
-              <span>show scramble</span>
-            </label>
+        <div class="themes-wrap">
+          <button id="themes-btn" class="ghost-btn" type="button" aria-haspopup="true" aria-expanded="false">themes</button>
+          <div class="themes-pop" id="themes-pop" hidden>
+            <input id="themes-search" class="themes-search" type="search" placeholder="search themes…" />
+            <div class="themes-list" id="themes-list"></div>
           </div>
-          <div class="settings-section">
-            <h4>cube</h4>
-            <label class="switch-row">
-              <input id="cube-visible" type="checkbox" checked />
-              <span>show cube</span>
-            </label>
-            <div class="settings-range">
-              <label class="switch-row" for="cube-size" style="min-width:72px">size</label>
-              <input id="cube-size" type="range" min="60" max="220" step="5" value="118" />
-              <span class="settings-value" id="cube-size-value">118</span>
+        </div>
+        <div class="settings-wrap">
+          <button id="settings-btn" class="ghost-btn" type="button" aria-haspopup="true" aria-expanded="false">settings</button>
+          <div class="settings-pop" id="settings-pop" hidden>
+            <div class="settings-section">
+              <h4>scramble</h4>
+              <div class="settings-range">
+                <input id="scramble-size" type="range" min="70" max="150" step="5" value="100" />
+                <span class="settings-value" id="scramble-size-value">100%</span>
+              </div>
+              <label class="switch-row">
+                <input id="scramble-visible" type="checkbox" checked />
+                <span>show scramble</span>
+              </label>
             </div>
-          </div>
-          <div class="settings-section">
-            <h4>fonts</h4>
-            <div class="settings-range">
-              <label class="switch-row" for="font" style="min-width:72px">font</label>
-              <select id="font" class="settings-select"></select>
+            <div class="settings-section">
+              <h4>cube</h4>
+              <label class="switch-row">
+                <input id="cube-visible" type="checkbox" checked />
+                <span>show cube</span>
+              </label>
+              <div class="settings-range">
+                <label class="switch-row" for="cube-size" style="min-width:72px">size</label>
+                <input id="cube-size" type="range" min="60" max="220" step="5" value="118" />
+                <span class="settings-value" id="cube-size-value">118</span>
+              </div>
+            </div>
+            <div class="settings-section">
+              <h4>fonts</h4>
+              <div class="settings-range">
+                <label class="switch-row" for="font" style="min-width:72px">font</label>
+                <select id="font" class="settings-select"></select>
+              </div>
             </div>
           </div>
         </div>
@@ -88,6 +99,9 @@
           </div>
         </div>
       </div>
+      <button id="menu-btn" class="menu-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="open menu">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v2.2H3zM3 10.9h18V13H3zM3 15.8h18V18H3z"/></svg>
+      </button>
     </div>
   </header>
 
@@ -149,8 +163,8 @@
       <section class="instrument">
         <div class="instrument-grid" aria-hidden="true"></div>
         <div class="scramble-nav">
-          <button id="prev-scramble" class="ghost-btn" type="button" title="previous scramble">‹ prev</button>
-          <button id="next-scramble" class="ghost-btn" type="button" title="new scramble">next ⟳</button>
+          <button id="prev-scramble" class="ghost-btn" type="button" title="previous scramble">‹<span class="nav-label"> prev</span></button>
+          <button id="next-scramble" class="ghost-btn" type="button" title="new scramble"><span class="nav-label">next </span>⟳</button>
         </div>
         <twisty-player id="cube" class="cube" puzzle="3x3x3" alg=""
           background="none" control-panel="none" hint-facelets="none"></twisty-player>
@@ -164,6 +178,11 @@
         </div>
       </section>
     </div>
+
+    <button id="history-toggle" class="history-toggle" type="button" aria-expanded="true" aria-label="toggle history">
+      <span class="history-toggle-arrow" aria-hidden="true">▲</span>
+      <span class="history-toggle-label">history</span>
+    </button>
   </main>
 
   <div class="modal" id="solve-modal" hidden>
@@ -206,6 +225,6 @@
   <script src="logo.js?v=3"></script>
   <script src="themes.js?v=2"></script>
   <script src="celebrate.js?v=3"></script>
-  <script type="module" src="app.js?v=36"></script>
+  <script type="module" src="app.js?v=39"></script>
 </body>
 </html>
