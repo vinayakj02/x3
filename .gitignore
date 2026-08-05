@@ -21,3 +21,8 @@ experiments/
 
 # private docs (not for public repo)
 my_docs/
+
+# local dev secrets + compose override (not for public repo)
+.env
+.env.*
+docker-compose.local.yml

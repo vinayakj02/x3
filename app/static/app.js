@@ -73,7 +73,6 @@ const el = {
   profileWrap: document.getElementById("profile-wrap"),
   profileBtn: document.getElementById("profile-btn"),
   profileAvatar: document.getElementById("profile-avatar"),
-  profileName: document.getElementById("profile-name"),
   profilePop: document.getElementById("profile-pop"),
   profilePopAvatar: document.getElementById("profile-pop-avatar"),
   profilePopName: document.getElementById("profile-pop-name"),
@@ -1434,7 +1433,6 @@ function renderAuth() {
     return;
   }
   const name = (u && (u.name || u.email)) || "signed in";
-  el.profileName.textContent = name;
   el.profilePopName.textContent = name;
   if (u && u.email && u.name && u.name !== u.email) {
     el.profileEmail.hidden = false;
