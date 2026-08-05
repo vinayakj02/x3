@@ -123,6 +123,11 @@ const EVENTS = [
   { id: "pyram", name: "Pyraminx", puzzle: "pyraminx", scale: 1.1, group: "Other" },
   { id: "skewb", name: "Skewb", puzzle: "skewb", scale: 1.1, group: "Other" },
   { id: "sq1", name: "Square-1", puzzle: "square1", scale: 1.2, group: "Other" },
+  { id: "fto", name: "FTO", puzzle: "fto", scale: 1.2, group: "Other" },
+  { id: "master_tetraminx", name: "Master Tetraminx", puzzle: "master_tetraminx", scale: 1.2, group: "Other" },
+  { id: "kilominx", name: "Kilominx", puzzle: "kilominx", scale: 1.2, group: "Other" },
+  { id: "redi_cube", name: "Redi Cube", puzzle: "redi_cube", scale: 1.2, group: "Other" },
+  { id: "baby_fto", name: "Baby FTO", puzzle: "baby_fto", scale: 1.1, group: "Other" },
 ];
 
 function applyEventScale() {
