@@ -388,6 +388,16 @@ textarea {
   color: var(--ink);
 }
 
+.events-group {
+  padding: 0.5rem 0.6rem 0.2rem;
+  font-family: var(--font-mono);
+  font-size: 0.54rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  opacity: 0.7;
+}
+
 .session-item .session-count {
   float: right;
   color: var(--ink-soft);

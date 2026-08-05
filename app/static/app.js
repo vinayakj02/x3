@@ -108,21 +108,21 @@ const IDLE_HINT = window.matchMedia("(pointer: coarse)").matches
   : 'hold to start · or press <kbd>space</kbd>';
 
 const EVENTS = [
-  { id: "222", name: "2x2", puzzle: "2x2x2" },
-  { id: "333", name: "3x3", puzzle: "3x3x3" },
-  { id: "333oh", name: "3x3 OH", puzzle: "3x3x3" },
-  { id: "333bf", name: "3x3 BLD", puzzle: "3x3x3" },
-  { id: "444", name: "4x4", puzzle: "4x4x4", scale: 1.3 },
-  { id: "555", name: "5x5", puzzle: "5x5x5", scale: 1.5 },
-  { id: "666", name: "6x6", puzzle: "6x6x6", scale: 1.7 },
-  { id: "777", name: "7x7", puzzle: "7x7x7", scale: 1.9 },
-  { id: "444bf", name: "4x4 BLD", puzzle: "4x4x4", scale: 1.3 },
-  { id: "555bf", name: "5x5 BLD", puzzle: "5x5x5", scale: 1.5 },
-  { id: "clock", name: "Clock", puzzle: "clock", scale: 1.1 },
-  { id: "minx", name: "Megaminx", puzzle: "megaminx", scale: 1.7 },
-  { id: "pyram", name: "Pyraminx", puzzle: "pyraminx", scale: 1.1 },
-  { id: "skewb", name: "Skewb", puzzle: "skewb", scale: 1.1 },
-  { id: "sq1", name: "Square-1", puzzle: "square-1", scale: 1.2 },
+  { id: "222", name: "2x2", puzzle: "2x2x2", group: "2x2" },
+  { id: "333", name: "3x3", puzzle: "3x3x3", group: "3x3" },
+  { id: "333oh", name: "3x3 OH", puzzle: "3x3x3", group: "3x3" },
+  { id: "333bf", name: "3x3 BLD", puzzle: "3x3x3", group: "3x3" },
+  { id: "444", name: "4x4", puzzle: "4x4x4", scale: 1.3, group: "4x4" },
+  { id: "444bf", name: "4x4 BLD", puzzle: "4x4x4", scale: 1.3, group: "4x4" },
+  { id: "555", name: "5x5", puzzle: "5x5x5", scale: 1.5, group: "5x5" },
+  { id: "555bf", name: "5x5 BLD", puzzle: "5x5x5", scale: 1.5, group: "5x5" },
+  { id: "666", name: "6x6", puzzle: "6x6x6", scale: 1.7, group: "6x6+" },
+  { id: "777", name: "7x7", puzzle: "7x7x7", scale: 1.9, group: "6x6+" },
+  { id: "clock", name: "Clock", puzzle: "clock", scale: 1.1, group: "Other" },
+  { id: "minx", name: "Megaminx", puzzle: "megaminx", scale: 1.7, group: "Other" },
+  { id: "pyram", name: "Pyraminx", puzzle: "pyraminx", scale: 1.1, group: "Other" },
+  { id: "skewb", name: "Skewb", puzzle: "skewb", scale: 1.1, group: "Other" },
+  { id: "sq1", name: "Square-1", puzzle: "square1", scale: 1.2, group: "Other" },
 ];
 
 function applyEventScale() {
@@ -635,7 +635,15 @@ function renderSessionList() {
 
 function renderEventList() {
   el.eventPop.innerHTML = "";
+  let lastGroup = null;
   for (const ev of EVENTS) {
+    if (ev.group !== lastGroup) {
+      const head = document.createElement("div");
+      head.className = "events-group";
+      head.textContent = ev.group;
+      el.eventPop.appendChild(head);
+      lastGroup = ev.group;
+    }
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "session-item" + (ev.id === state.event ? " active" : "");

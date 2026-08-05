@@ -28,6 +28,10 @@ vanilla HTML/CSS/JS (ES modules) · [cubing.js](https://js.cubing.net/cubing/) �
 
 Run it locally, test, or set up Google sign-in for local dev: see [docs/README.md](docs/README.md).
 
+## Credits
+
+Scrambles and the 3D cube viewer are powered by [cubing.js](https://github.com/cubing/cubing.js/).
+
 ## License
 
 [MIT](LICENSE) · Copyright (c) 2026 vinayakj02
