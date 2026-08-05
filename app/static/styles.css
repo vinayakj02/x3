@@ -805,10 +805,18 @@ textarea {
 }
 
 .solve-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   font-weight: 700;
   font-size: 0.76rem;
   color: var(--ink);
   white-space: nowrap;
+}
+
+.solve-fast {
+  color: var(--brass);
+  font-size: 0.7rem;
 }
 
 .solve-time.plus-two {
@@ -1355,6 +1363,19 @@ body.scramble-hidden .scramble {
 
 .modal-time.dnf {
   color: var(--bad);
+}
+
+.modal-time.fast::after {
+  content: "⚡ suspiciously fast";
+  display: inline-block;
+  margin-left: 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--brass);
+  vertical-align: middle;
 }
 
 .modal-meta {

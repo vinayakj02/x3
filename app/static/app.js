@@ -790,7 +790,16 @@ function renderSolves() {
 
     const time = document.createElement("span");
     time.className = `solve-time ${penaltyClass(solve.penalty)}`;
-    time.textContent = formatSolveTime(solve);
+    const timeText = document.createElement("span");
+    timeText.textContent = formatSolveTime(solve);
+    time.appendChild(timeText);
+    if (isAbnormalFastSolve(solve)) {
+      const fast = document.createElement("span");
+      fast.className = "solve-fast";
+      fast.textContent = "⚡";
+      fast.title = "suspiciously fast";
+      time.appendChild(fast);
+    }
 
     const r = rollups[chronIdx];
     const mk = (v, best) => {
@@ -899,6 +908,9 @@ function renderModal() {
   el.modalTitle.textContent = `solve · #${solveNumber(solve.id)}`;
   el.modalTime.textContent = formatSolveTime(solve);
   el.modalTime.className = `modal-time ${penaltyClass(solve.penalty)}`;
+  const fast = isAbnormalFastSolve(solve);
+  el.modalTime.classList.toggle("fast", fast);
+  el.modalTime.title = fast ? "suspiciously fast" : "";
   el.modalScramble.textContent = solve.scramble;
   el.modalScramble.title = solve.scramble;
   el.modalPlusTwo.classList.toggle("active", solve.penalty === "PLUS_TWO");
@@ -1186,6 +1198,17 @@ function isAbnormalSolve(solveId) {
   const mean = valid.reduce((a, b) => a + b, 0) / valid.length;
   const sd = Math.sqrt(valid.reduce((a, b) => a + (b - mean) ** 2, 0) / valid.length) || 1;
   return solve.adjusted_ms > mean + 2.5 * sd;
+}
+
+function isAbnormalFastSolve(solve) {
+  if (!solve || solve.penalty === "DNF") return false;
+  const valid = state.solves
+    .filter((s) => s.penalty !== "DNF" && s.id !== solve.id)
+    .map((s) => s.adjusted_ms);
+  if (valid.length < 8) return false;
+  const mean = valid.reduce((a, b) => a + b, 0) / valid.length;
+  const sd = Math.sqrt(valid.reduce((a, b) => a + (b - mean) ** 2, 0) / valid.length) || 1;
+  return solve.adjusted_ms < mean - 2.5 * sd;
 }
 
 function confirmUnusualSolve(solveId) {
