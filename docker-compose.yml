@@ -1,6 +1,8 @@
 services:
   timer:
     build: .
+    environment:
+      - X3_DEV=1
     ports:
       - "8080:8000"
     volumes:
