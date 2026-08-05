@@ -16,9 +16,9 @@ def test_average_simple():
 def test_average_trim_and_dnf():
     solves = [(10000, "NONE"), (20000, "NONE"), (15000, "NONE"), (16000, "DNF"), (18000, "NONE")]
     avg = average(solves, 5)
-    # DNF excluded from values; drop best (10000) and worst (20000)
-    # -> mean of [15000, 18000]
-    assert avg.ms == (15000 + 18000) // 2
+    # the DNF is the dropped worst; only the best (10000) is also dropped
+    # -> mean of [15000, 18000, 20000]
+    assert avg.ms == round((15000 + 18000 + 20000) / 3)
     assert avg.dnf is False
 
 

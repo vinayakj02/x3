@@ -1432,6 +1432,115 @@ body.scramble-hidden .scramble {
   gap: 0.5rem;
 }
 
+.modal-rollups {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.8rem;
+}
+
+.rollup-btn {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  background: none;
+  border: 1px solid var(--hair-strong);
+  padding: 0.3rem 0.55rem;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.rollup-btn:hover {
+  color: var(--ink);
+  border-color: var(--accent);
+}
+
+.rollup-btn[data-active="true"] {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.rollup-pop {
+  border: 1px solid var(--hair-strong);
+  background: var(--face-deep);
+  padding: 0.7rem 0.8rem;
+  margin-bottom: 0.9rem;
+}
+
+.rollup-pop[hidden] {
+  display: none;
+}
+
+.rollup-title {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin-bottom: 0.2rem;
+}
+
+.rollup-note {
+  font-family: var(--font-mono);
+  font-size: 0.56rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 0.5rem;
+}
+
+.rollup-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.rollup-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.18rem 0;
+  border-bottom: 1px solid var(--hair);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.rollup-list li:last-child {
+  border-bottom: none;
+}
+
+.rollup-num {
+  color: var(--ink-soft);
+  font-size: 0.6rem;
+  width: 1.6rem;
+  flex: none;
+}
+
+.rollup-time {
+  color: var(--ink);
+}
+
+.rollup-time.dnf {
+  color: var(--bad);
+}
+
+.rollup-list li.rollup-drop .rollup-time {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+
+.rollup-tag {
+  margin-left: auto;
+  font-size: 0.52rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brass);
+  border: 1px solid var(--brass);
+  padding: 0.05rem 0.35rem;
+}
+
 .confirm-text {
   font-size: 0.9rem;
   color: var(--ink-soft);

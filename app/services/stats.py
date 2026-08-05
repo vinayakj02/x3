@@ -23,7 +23,7 @@ def average(solves: list[tuple[int, str]], n: int) -> AverageOut:
     if dnf_count >= 2:
         return AverageOut(dnf=True)
     values = sorted(adjusted_ms(t, p) for t, p in window if p != "DNF")
-    trimmed = values[1:-1]
+    trimmed = values[1:] if dnf_count == 1 else values[1:-1]
     if not trimmed:
         return AverageOut(dnf=True)
     return AverageOut(ms=round(sum(trimmed) / len(trimmed)))

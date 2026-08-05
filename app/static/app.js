@@ -41,6 +41,12 @@ const el = {
   modalPlusTwo: document.getElementById("modal-plus-two"),
   modalDnf: document.getElementById("modal-dnf"),
   modalDelete: document.getElementById("modal-delete"),
+  modalMo3: document.getElementById("modal-mo3"),
+  modalAo5: document.getElementById("modal-ao5"),
+  modalAo12: document.getElementById("modal-ao12"),
+  rollupPop: document.getElementById("rollup-pop"),
+  rollupTitle: document.getElementById("rollup-title"),
+  rollupList: document.getElementById("rollup-list"),
   metaSolved: document.getElementById("meta-solved"),
   metaRank: document.getElementById("meta-rank"),
   metaDeviation: document.getElementById("meta-deviation"),
@@ -449,7 +455,7 @@ function initTheme() {
     applyTheme(saved);
     return;
   }
-  applyTheme(window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  applyTheme("star-wars");
 }
 
 function renderThemesList(listEl, searchEl) {
@@ -699,7 +705,7 @@ function rolling(solves, n, trim) {
     .filter((s) => s.penalty !== "DNF")
     .map((s) => s.adjusted_ms)
     .sort((a, b) => a - b);
-  if (trim) vals = vals.slice(1, -1);
+  if (trim) vals = dnf === 1 ? vals.slice(1) : vals.slice(1, -1);
   return vals.reduce((a, b) => a + b, 0) / vals.length;
 }
 
@@ -968,7 +974,97 @@ function renderModal() {
   const moves = solve.scramble.trim().split(/\s+/).filter(Boolean).length;
   el.metaMoves.textContent = String(moves);
   el.metaSession.textContent = sessionName(state.sessionId) || "—";
+
+  const idx = state.solves.findIndex((s) => s.id === solve.id);
+  const r = idx >= 0 && state.rollups[idx] ? state.rollups[idx] : {};
+  el.modalMo3.textContent = `mo3 ${fmtAvg(r.mo3)}`;
+  el.modalAo5.textContent = `ao5 ${fmtAvg(r.ao5)}`;
+  el.modalAo12.textContent = `ao12 ${fmtAvg(r.ao12)}`;
+  el.rollupPop.hidden = true;
+  Object.values(ROLLUP_BTNS).forEach((b) => b.removeAttribute("data-active"));
+  rollupOpen = null;
 }
+
+function rollupBreakdown(n, trim) {
+  const solve = findSolve(state.activeSolveId);
+  const idx = state.solves.findIndex((s) => s.id === solve.id);
+  if (idx < 0) return null;
+  const win = state.solves.slice(0, idx + 1).slice(-n);
+  if (win.length < n) {
+    return { win, dropped: new Set(), avg: null };
+  }
+  const dnf = win.filter((s) => s.penalty === "DNF").length;
+  const dnfLimit = trim ? 2 : 1;
+  const avg = dnf >= dnfLimit ? "DNF" : rolling(state.solves.slice(0, idx + 1), n, trim);
+  const dropped = new Set();
+  if (trim && dnf < dnfLimit) {
+    const nonDnf = win
+      .map((s, i) => ({ i, ms: s.adjusted_ms }))
+      .filter((x) => win[x.i].penalty !== "DNF")
+      .sort((a, b) => a.ms - b.ms);
+    if (dnf === 1) {
+      if (nonDnf.length) dropped.add(nonDnf[0].i);
+      win.forEach((s, i) => {
+        if (s.penalty === "DNF") dropped.add(i);
+      });
+    } else if (nonDnf.length >= 2) {
+      dropped.add(nonDnf[0].i);
+      dropped.add(nonDnf[nonDnf.length - 1].i);
+    }
+  }
+  return { win, dropped, avg };
+}
+
+function renderRollup(n, trim) {
+  const b = rollupBreakdown(n, trim);
+  if (!b) return;
+  const label = `ao${n}`;
+  el.rollupTitle.textContent =
+    b.avg === null || b.avg === undefined
+      ? `current ${label}`
+      : `current ${label} · ${b.avg === "DNF" ? "DNF" : formatTime(Math.round(b.avg), 2)}`;
+  el.rollupList.innerHTML = "";
+  b.win.forEach((s, i) => {
+    const li = document.createElement("li");
+    if (b.dropped.has(i)) li.classList.add("rollup-drop");
+    const num = document.createElement("span");
+    num.className = "rollup-num";
+    num.textContent = String(state.solves.indexOf(s) + 1);
+    const t = document.createElement("span");
+    t.className = "rollup-time" + (s.penalty === "DNF" ? " dnf" : "");
+    t.textContent = formatSolveTime(s);
+    li.append(num, t);
+    if (b.dropped.has(i)) {
+      const tag = document.createElement("span");
+      tag.className = "rollup-tag";
+      tag.textContent = "drop";
+      li.appendChild(tag);
+    }
+    el.rollupList.appendChild(li);
+  });
+}
+
+let rollupOpen = null;
+const ROLLUP_BTNS = { 3: el.modalMo3, 5: el.modalAo5, 12: el.modalAo12 };
+
+function toggleRollup(n, trim) {
+  if (rollupOpen === n) {
+    el.rollupPop.hidden = true;
+    rollupOpen = null;
+    Object.values(ROLLUP_BTNS).forEach((b) => b.removeAttribute("data-active"));
+    return;
+  }
+  renderRollup(n, trim);
+  el.rollupPop.hidden = false;
+  rollupOpen = n;
+  Object.entries(ROLLUP_BTNS).forEach(([k, b]) =>
+    b.setAttribute("data-active", k === String(n) ? "true" : "false")
+  );
+}
+
+el.modalMo3.addEventListener("click", () => toggleRollup(3, false));
+el.modalAo5.addEventListener("click", () => toggleRollup(5, true));
+el.modalAo12.addEventListener("click", () => toggleRollup(12, true));
 
 async function onModalPenalty(penalty) {
   const solve = findSolve(state.activeSolveId);

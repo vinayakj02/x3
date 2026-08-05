@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.cubing.net/v0/js/cubing/twisty" type="module" integrity="sha384-NS/RLzrthoePAHnoX1ny1q2BOPpsDWFiSa4KkaPu35uG7ToL1Dj/jCWkku0mLPBO" crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="styles.css?v=51" />
+  <link rel="stylesheet" href="styles.css?v=52" />
 </head>
 <body>
   <header class="topbar">
@@ -198,6 +198,16 @@
         <div><dt>moves</dt><dd id="meta-moves">—</dd></div>
         <div><dt>session</dt><dd id="meta-session">—</dd></div>
       </dl>
+      <div class="modal-rollups">
+        <button type="button" class="rollup-btn" id="modal-mo3">mo3 —</button>
+        <button type="button" class="rollup-btn" id="modal-ao5">ao5 —</button>
+        <button type="button" class="rollup-btn" id="modal-ao12">ao12 —</button>
+      </div>
+      <div class="rollup-pop" id="rollup-pop" hidden>
+        <div class="rollup-title" id="rollup-title"></div>
+        <div class="rollup-note">best &amp; worst dropped</div>
+        <ol class="rollup-list" id="rollup-list"></ol>
+      </div>
       <div class="modal-scramble" id="modal-scramble"></div>
       <div class="modal-actions">
         <button class="penalty-btn plus-two" id="modal-plus-two" type="button">+2</button>
@@ -225,6 +235,6 @@
   <script src="logo.js?v=3"></script>
   <script src="themes.js?v=2"></script>
   <script src="celebrate.js?v=3"></script>
-  <script type="module" src="app.js?v=43"></script>
+  <script type="module" src="app.js?v=45"></script>
 </body>
 </html>
