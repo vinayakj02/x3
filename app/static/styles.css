@@ -1682,6 +1682,12 @@ body.scramble-hidden .scramble {
     -webkit-overflow-scrolling: touch;
   }
 
+  .history .solve-list {
+    flex: none;
+    min-height: 0;
+    overflow: visible;
+  }
+
   .history-toggle {
     order: 3;
     display: flex;

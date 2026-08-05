@@ -562,6 +562,13 @@ function prevScramble() {
 
 /* ---------- sessions ---------- */
 
+function newestSession(sessions) {
+  return sessions.reduce(
+    (a, s) => (!a || (s.created_at || "").localeCompare(a.created_at) > 0 ? s : a),
+    null
+  );
+}
+
 async function loadSessionsForEvent() {
   const all = await store.listSessions();
   state.sessions = all.filter((s) => s.event === state.event);
@@ -576,16 +583,16 @@ async function loadSessionsForEvent() {
   } catch (err) {
     /* ignore */
   }
-  const target = state.sessions.find((s) => s.id === saved) || state.sessions[0];
+  const target =
+    state.sessions.find((s) => s.id === saved) ||
+    newestSession(state.sessions) ||
+    state.sessions[0];
   await loadSession(target.id);
 }
 
 function renderSessionList() {
   el.sessionPop.innerHTML = "";
-  const newest = state.sessions.reduce(
-    (a, s) => (!a || (s.created_at || "").localeCompare(a.created_at) > 0 ? s : a),
-    null
-  );
+  const newest = newestSession(state.sessions);
   for (const s of state.sessions) {
     const btn = document.createElement("button");
     btn.type = "button";
@@ -1055,6 +1062,7 @@ function startRun() {
   state.startMs = performance.now();
   state.elapsedMs = 0;
   phase("running");
+  if (!state.pendingScramble) prefetchScramble();
   const step = () => {
     if (state.phase !== "running") return;
     state.elapsedMs = performance.now() - state.startMs;
@@ -1078,6 +1086,7 @@ async function stopRun(penalty = "NONE") {
       time_ms: Math.max(1, Math.round(elapsed)),
       penalty,
     });
+    await nextScramble();
     if (penalty === "DNF") {
       el.instrument.classList.add("flash-dnf");
       setTimeout(() => el.instrument.classList.remove("flash-dnf"), 500);
@@ -1103,7 +1112,6 @@ async function stopRun(penalty = "NONE") {
     if (penalty !== "DNF" && isAbnormalSolve(saved.id)) {
       await confirmUnusualSolve(saved.id);
     }
-    await nextScramble();
   } catch (err) {
     el.instrument.classList.add("flash-bad");
     setHint("failed to save — " + err.message);
