@@ -48,6 +48,44 @@ def test_sessions_require_auth(client):
     assert client.get("/api/sessions").status_code == 401
 
 
+def test_security_headers_on_page(client):
+    r = client.get("/")
+    assert r.status_code == 200
+    assert r.headers["x-content-type-options"] == "nosniff"
+    assert r.headers["x-frame-options"] == "DENY"
+    assert r.headers["referrer-policy"] == "strict-origin-when-cross-origin"
+    csp = r.headers["content-security-policy"]
+    assert "script-src 'self' https://cdn.cubing.net" in csp
+    assert "object-src 'none'" in csp
+    assert "frame-ancestors 'none'" in csp
+
+
+def test_api_no_store(client):
+    r = client.get("/api/auth/me")
+    assert r.status_code == 401
+    assert r.headers["cache-control"] == "no-store"
+
+
+def test_state_cookie_secure_when_https(client, monkeypatch):
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "test-id")
+    monkeypatch.setenv("BASE_URL", "https://x3.example.com")
+    r = client.get("/api/auth/login", follow_redirects=False)
+    assert r.status_code == 302
+    set_cookie = r.headers.get("set-cookie", "")
+    assert "x3_oauth_state=" in set_cookie
+    assert "Secure" in set_cookie
+
+
+def test_state_cookie_not_secure_when_http(client, monkeypatch):
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "test-id")
+    monkeypatch.setenv("BASE_URL", "http://localhost:8080")
+    r = client.get("/api/auth/login", follow_redirects=False)
+    assert r.status_code == 302
+    set_cookie = r.headers.get("set-cookie", "")
+    assert "x3_oauth_state=" in set_cookie
+    assert "Secure" not in set_cookie
+
+
 def test_sync_upsert_is_idempotent(client):
     h = {"Authorization": "Bearer tok1"}
     payload = {

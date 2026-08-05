@@ -20,6 +20,10 @@ from app.models import AuthExchange
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
+def _is_https(request: Request) -> bool:
+    return base_url(request).startswith("https://")
+
+
 @router.get("/login")
 async def login(request: Request) -> RedirectResponse:
     url, state = build_login_url(request)
@@ -29,6 +33,7 @@ async def login(request: Request) -> RedirectResponse:
         state,
         httponly=True,
         samesite="lax",
+        secure=_is_https(request),
         path="/",
         max_age=600,
     )
@@ -51,7 +56,7 @@ async def callback(
     except Exception:
         return fail
     response = RedirectResponse(f"{base}/?code={code_value}", status_code=302)
-    response.delete_cookie(STATE_COOKIE, path="/")
+    response.delete_cookie(STATE_COOKIE, path="/", secure=_is_https(request), samesite="lax")
     return response
 
 
