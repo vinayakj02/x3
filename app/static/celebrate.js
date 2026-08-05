@@ -104,11 +104,33 @@
     banner.id = "celebration-banner";
     const hasTime = records.some((r) => r.type === "time");
     const headline = hasTime ? "new personal best" : "new record";
-    banner.innerHTML = `<div class="banner-title">${cfg.name} · ${headline}</div>` +
+    banner.innerHTML = `<div class="banner-title">${headline}</div>` +
       `<div class="banner-records">` + records.map((r) => `<div><span class="r-label">${RECORD_LABELS[r.type] || r.type}</span><span class="r-value">${fmt(r.value)}</span></div>`).join("") + `</div>` +
       `<button class="banner-dismiss">dismiss</button>`;
-    overlay.appendChild(banner);
-    banner.querySelector(".banner-dismiss").addEventListener("click", () => { canvas.remove(); overlay.remove(); });
+
+    const instrument = document.querySelector(".instrument");
+    const anchored = !!instrument && window.innerWidth >= 860;
+    if (anchored) {
+      overlay.style.display = "none";
+      instrument.appendChild(banner);
+      Object.assign(banner.style, {
+        position: "absolute",
+        top: "15%",
+        left: "50%",
+        transform: "translateX(-50%)",
+        zIndex: "20",
+      });
+      banner.addEventListener("pointerdown", (e) => e.stopPropagation());
+    } else {
+      overlay.appendChild(banner);
+    }
+    const removeAll = () => {
+      canvas.remove();
+      overlay.remove();
+      banner.remove();
+      window.removeEventListener("resize", resize);
+    };
+    banner.querySelector(".banner-dismiss").addEventListener("click", removeAll);
 
     const ctx = canvas.getContext("2d");
     let W, H;
@@ -271,6 +293,6 @@
     }
     requestAnimationFrame(frame);
     setTimeout(() => { if (canvas.isConnected) banner.style.opacity = "0"; }, 2600);
-    setTimeout(() => { if (overlay.isConnected) { canvas.remove(); overlay.remove(); window.removeEventListener("resize", resize); } }, 3400);
+    setTimeout(() => { if (overlay.isConnected || banner.isConnected) removeAll(); }, 3400);
   };
 })();
