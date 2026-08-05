@@ -27,7 +27,7 @@ class SessionOut(BaseModel):
 class SolveCreate(BaseModel):
     session_client_id: str = Field(max_length=64)
     client_id: str = Field(default="", max_length=64)
-    scramble: str
+    scramble: str = Field(min_length=1, max_length=1024)
     time_ms: int = Field(gt=0)
     penalty: Penalty = "NONE"
 
@@ -69,23 +69,27 @@ class SyncSession(BaseModel):
     client_id: str = Field(max_length=64)
     name: str = Field(max_length=64)
     event: str = Field(default="333", max_length=16)
-    created_at: str = ""
+    created_at: str = Field(default="", max_length=64)
 
 
 class SyncSolve(BaseModel):
     client_id: str = Field(max_length=64)
     session_client_id: str = Field(max_length=64)
-    scramble: str
+    scramble: str = Field(min_length=1, max_length=1024)
     time_ms: int = Field(gt=0)
     penalty: Penalty = "NONE"
-    solved_at: str = ""
+    solved_at: str = Field(default="", max_length=64)
+
+
+MAX_SYNC_SESSIONS = 5000
+MAX_SYNC_SOLVES = 50000
 
 
 class SyncIn(BaseModel):
-    sessions: list[SyncSession] = []
-    solves: list[SyncSolve] = []
-    deleted_sessions: list[str] = []
-    deleted_solves: list[str] = []
+    sessions: list[SyncSession] = Field(default_factory=list, max_length=MAX_SYNC_SESSIONS)
+    solves: list[SyncSolve] = Field(default_factory=list, max_length=MAX_SYNC_SOLVES)
+    deleted_sessions: list[str] = Field(default_factory=list, max_length=MAX_SYNC_SESSIONS)
+    deleted_solves: list[str] = Field(default_factory=list, max_length=MAX_SYNC_SOLVES)
 
 
 class SyncOut(BaseModel):

@@ -21,6 +21,7 @@ class User(Base):
 class AuthToken(Base):
     __tablename__ = "auth_tokens"
 
+    # stores sha256(token) — the raw value exists only in the client
     token: Mapped[str] = mapped_column(String, primary_key=True)
     user_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False

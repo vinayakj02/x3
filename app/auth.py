@@ -1,3 +1,4 @@
+import hashlib
 import os
 import secrets
 import time
@@ -29,6 +30,11 @@ def _iso_in(seconds: int) -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(time.time() + seconds))
 
 
+def _hash_token(raw: str) -> str:
+    """Store only a digest of the token; the raw value lives only in the browser."""
+    return hashlib.sha256(raw.encode()).hexdigest()
+
+
 def google_client_id() -> str:
     value = os.environ.get("GOOGLE_CLIENT_ID", "")
     if not value:
@@ -44,7 +50,12 @@ def google_client_secret() -> str:
 
 
 def base_url(request: Request) -> str:
-    return os.environ.get("BASE_URL") or str(request.base_url).rstrip("/")
+    value = os.environ.get("BASE_URL")
+    if value:
+        return value.rstrip("/")
+    if os.environ.get("X3_DEV") == "1":
+        return str(request.base_url).rstrip("/")
+    raise HTTPException(status_code=500, detail="BASE_URL is not configured")
 
 
 def redirect_uri(request: Request) -> str:
@@ -73,7 +84,7 @@ async def exchange_code(code: str, request: Request) -> dict:
         "redirect_uri": redirect_uri(request),
         "grant_type": "authorization_code",
     }
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=httpx.Timeout(10.0)) as client:
         token_res = await client.post(GOOGLE_TOKEN_URL, data=payload)
         token_res.raise_for_status()
         access_token = token_res.json()["access_token"]
@@ -111,7 +122,7 @@ def create_token(user_id: int) -> str:
     with SessionLocal() as db:
         db.add(
             AuthToken(
-                token=token,
+                token=_hash_token(token),
                 user_id=user_id,
                 expires_at=_iso_in(TOKEN_TTL_DAYS * 86400),
             )
@@ -154,7 +165,7 @@ def redeem_exchange_code(code: str) -> str | None:
         token = secrets.token_urlsafe(32)
         db.add(
             AuthToken(
-                token=token,
+                token=_hash_token(token),
                 user_id=rec.user_id,
                 expires_at=_iso_in(TOKEN_TTL_DAYS * 86400),
             )
@@ -177,7 +188,7 @@ def purge_expired_tokens() -> None:
 
 def revoke_token(token: str) -> None:
     with SessionLocal() as db:
-        db.execute(delete(AuthToken).where(AuthToken.token == token))
+        db.execute(delete(AuthToken).where(AuthToken.token == _hash_token(token)))
         db.commit()
 
 
@@ -192,7 +203,7 @@ def get_current_user(
             select(User.id, User.email, User.name)
             .join(AuthToken, AuthToken.user_id == User.id)
             .where(
-                AuthToken.token == token,
+                AuthToken.token == _hash_token(token),
                 or_(
                     AuthToken.expires_at.is_(None),
                     AuthToken.expires_at > _now_iso(),

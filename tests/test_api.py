@@ -1,3 +1,4 @@
+import hashlib
 import os
 import tempfile
 import time
@@ -13,6 +14,10 @@ from app.db_models import AuthCode, AuthToken, User
 from app.main import app
 
 
+def _hash(s):
+    return hashlib.sha256(s.encode()).hexdigest()
+
+
 @pytest.fixture(scope="module")
 def client():
     init_db()
@@ -24,7 +29,7 @@ def client():
             user = User(google_sub="sub1", email="a@b.c", name="Alice")
             db.add(user)
             db.flush()
-        db.add(AuthToken(token="tok1", user_id=user.id))
+        db.add(AuthToken(token=_hash("tok1"), user_id=user.id))
         db.commit()
     with TestClient(app) as c:
         yield c
@@ -164,7 +169,7 @@ def test_user_scoping(client):
             user = User(google_sub="sub2", email="b@b.c")
             db.add(user)
             db.flush()
-        db.add(AuthToken(token="tok2", user_id=user.id))
+        db.add(AuthToken(token=_hash("tok2"), user_id=user.id))
         db.commit()
 
     h2 = {"Authorization": "Bearer tok2"}
@@ -212,7 +217,7 @@ def test_exchange_code_expired(client):
 def test_expired_token_rejected(client):
     with SessionLocal() as db:
         db.add(
-            AuthToken(token="tok-exp", user_id=_uid("sub1"), expires_at=_iso(-3600))
+            AuthToken(token=_hash("tok-exp"), user_id=_uid("sub1"), expires_at=_iso(-3600))
         )
         db.commit()
 
@@ -220,3 +225,87 @@ def test_expired_token_rejected(client):
         client.get("/api/auth/me", headers={"Authorization": "Bearer tok-exp"}).status_code
         == 401
     )
+
+
+def test_token_stored_hashed(client):
+    with SessionLocal() as db:
+        db.add(AuthCode(code="c3", user_id=_uid("sub1"), expires_at=_iso(3600)))
+        db.commit()
+    r = client.post("/api/auth/exchange", json={"code": "c3"})
+    assert r.status_code == 200
+    raw = r.json()["token"]
+    with SessionLocal() as db:
+        found = db.execute(
+            select(AuthToken).where(AuthToken.token == _hash(raw))
+        ).scalar_one_or_none()
+        stored = db.execute(
+            select(AuthToken).where(AuthToken.token == raw)
+        ).scalar_one_or_none()
+    assert found is not None
+    assert stored is None
+
+
+def test_solve_rejects_oversized_scramble(client):
+    h = {"Authorization": "Bearer tok1"}
+    r = client.post(
+        "/api/solves",
+        json={
+            "session_client_id": "nope",
+            "client_id": "v3",
+            "scramble": "U" * 5000,
+            "time_ms": 9000,
+            "penalty": "NONE",
+        },
+        headers=h,
+    )
+    assert r.status_code == 422
+
+
+def test_sync_rejects_oversized_payload(client):
+    h = {"Authorization": "Bearer tok1"}
+    solves = [
+        {
+            "client_id": f"v{i}",
+            "session_client_id": "s1",
+            "scramble": "U",
+            "time_ms": 1000,
+            "penalty": "NONE",
+        }
+        for i in range(50001)
+    ]
+    r = client.post(
+        "/api/sync",
+        json={
+            "sessions": [],
+            "solves": solves,
+            "deleted_sessions": [],
+            "deleted_solves": [],
+        },
+        headers=h,
+    )
+    assert r.status_code == 422
+
+
+def test_large_body_rejected(client):
+    r = client.post(
+        "/api/auth/exchange",
+        content="x" * (10 * 1024 * 1024 + 1),
+        headers={"Content-Type": "application/json"},
+    )
+    assert r.status_code == 413
+
+
+def test_base_url_required_outside_dev(client, monkeypatch):
+    monkeypatch.delenv("BASE_URL", raising=False)
+    monkeypatch.delenv("X3_DEV", raising=False)
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "test-id")
+    r = client.get("/api/auth/login")
+    assert r.status_code == 500
+
+
+def test_base_url_falls_back_in_dev(client, monkeypatch):
+    monkeypatch.delenv("BASE_URL", raising=False)
+    monkeypatch.setenv("X3_DEV", "1")
+    monkeypatch.setenv("GOOGLE_CLIENT_ID", "test-id")
+    r = client.get("/api/auth/login", follow_redirects=False)
+    assert r.status_code == 302

@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.auth import purge_expired_tokens
@@ -14,6 +14,8 @@ from app.routers import auth, sessions, solves, sync
 STATIC_DIR = Path(__file__).parent / "static"
 
 DEV_ONLY_RE = re.compile(r"<!-- DEV_ONLY_BEGIN -->.*?<!-- DEV_ONLY_END -->", re.DOTALL)
+
+MAX_REQUEST_BYTES = 10 * 1024 * 1024  # 10 MB
 
 SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
@@ -50,6 +52,16 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Cubetimer", lifespan=lifespan)
+
+
+@app.middleware("http")
+async def limit_body_size(request: Request, call_next):
+    length = request.headers.get("content-length")
+    if length and length.isdigit() and int(length) > MAX_REQUEST_BYTES:
+        return JSONResponse(
+            {"detail": "request body too large"}, status_code=413
+        )
+    return await call_next(request)
 
 
 @app.middleware("http")

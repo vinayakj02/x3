@@ -22,7 +22,11 @@ COPY tests ./tests
 COPY alembic.ini .
 COPY migrations ./migrations
 
-RUN mkdir -p /app/data
+RUN mkdir -p /app/data \
+    && useradd --create-home --uid 1001 appuser \
+    && chown -R appuser:appuser /app/data
+
+USER appuser
 
 EXPOSE 8000
 
