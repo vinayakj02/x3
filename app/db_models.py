@@ -11,6 +11,7 @@ class User(Base):
     google_sub: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     email: Mapped[str | None] = mapped_column(String)
     name: Mapped[str | None] = mapped_column(String)
+    picture: Mapped[str | None] = mapped_column(String)
     created_at: Mapped[str] = mapped_column(
         String,
         nullable=False,

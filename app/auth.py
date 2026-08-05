@@ -14,6 +14,7 @@ from app.db_models import AuthCode, AuthToken, User
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
+GOOGLE_PEOPLE_URL = "https://people.googleapis.com/v1/people/me"
 GOOGLE_SCOPE = "openid email profile"
 
 STATE_COOKIE = "x3_oauth_state"
@@ -93,7 +94,28 @@ async def exchange_code(code: str, request: Request) -> dict:
             headers={"Authorization": f"Bearer {access_token}"},
         )
         info_res.raise_for_status()
-        return info_res.json()
+        info = info_res.json()
+        if not info.get("picture"):
+            await _attach_google_picture(client, access_token, info)
+        return info
+
+
+async def _attach_google_picture(client: httpx.AsyncClient, access_token: str, info: dict) -> None:
+    """userinfo dropped the picture field in 2023; fall back to the People API."""
+    try:
+        people_res = await client.get(
+            GOOGLE_PEOPLE_URL,
+            params={"personFields": "photos"},
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        if people_res.status_code != 200:
+            return
+        photos = people_res.json().get("photos") or []
+        url = photos[0].get("url") if photos else None
+        if url:
+            info["picture"] = url
+    except Exception:
+        pass
 
 
 def upsert_user(info: dict) -> int:
@@ -106,6 +128,7 @@ def upsert_user(info: dict) -> int:
                 google_sub=info["sub"],
                 email=info.get("email"),
                 name=info.get("name"),
+                picture=info.get("picture"),
             )
             db.add(user)
             db.commit()
@@ -113,6 +136,7 @@ def upsert_user(info: dict) -> int:
         else:
             user.email = info.get("email")
             user.name = info.get("name")
+            user.picture = info.get("picture")
             db.commit()
         return user.id
 
@@ -200,7 +224,7 @@ def get_current_user(
     token = authorization.removeprefix("Bearer ").strip()
     with SessionLocal() as db:
         row = db.execute(
-            select(User.id, User.email, User.name)
+            select(User.id, User.email, User.name, User.picture)
             .join(AuthToken, AuthToken.user_id == User.id)
             .where(
                 AuthToken.token == _hash_token(token),
@@ -212,7 +236,12 @@ def get_current_user(
         ).first()
     if row is None:
         raise HTTPException(status_code=401, detail="invalid token")
-    return {"id": row.id, "email": row.email, "name": row.name}
+    return {
+        "id": row.id,
+        "email": row.email,
+        "name": row.name,
+        "picture": row.picture,
+    }
 
 
 AuthUser = dict

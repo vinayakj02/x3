@@ -25,23 +25,18 @@
       <span class="brand-name"><span class="brand-x">x</span><span class="brand-3">3</span></span>
     </div>
     <div class="topbar-right">
-      <div class="auth-area">
-        <button id="signin-btn" class="ghost-btn" type="button">sign in</button>
-        <span id="user-name" class="user-name" hidden></span>
-        <button id="signout-btn" class="ghost-btn" type="button" hidden>sign out</button>
-      </div>
       <!-- DEV_ONLY_BEGIN -->
       <a href="explore.html" class="ghost-btn" style="text-decoration:none">explore</a>
       <!-- DEV_ONLY_END -->
       <div class="themes-wrap">
-        <button id="themes-btn" class="ghost-btn" type="button">themes</button>
+        <button id="themes-btn" class="ghost-btn" type="button" aria-haspopup="true" aria-expanded="false">themes</button>
         <div class="themes-pop" id="themes-pop" hidden>
           <input id="themes-search" class="themes-search" type="search" placeholder="search themes…" />
           <div class="themes-list" id="themes-list"></div>
         </div>
       </div>
       <div class="settings-wrap">
-        <button id="settings-btn" class="ghost-btn" type="button">settings</button>
+        <button id="settings-btn" class="ghost-btn" type="button" aria-haspopup="true" aria-expanded="false">settings</button>
         <div class="settings-pop" id="settings-pop" hidden>
           <div class="settings-section">
             <h4>scramble</h4>
@@ -73,10 +68,24 @@
               <select id="font" class="settings-select"></select>
             </div>
           </div>
-          <div class="settings-section">
-            <h4>themes</h4>
-            <input id="settings-themes-search" class="themes-search" type="search" placeholder="search themes…" />
-            <div class="themes-list" id="settings-themes-list"></div>
+        </div>
+      </div>
+      <div class="auth-area">
+        <button id="signin-btn" class="ghost-btn" type="button">sign in</button>
+        <div class="profile-wrap" id="profile-wrap" hidden>
+          <button id="profile-btn" class="profile-btn" type="button" aria-haspopup="true" aria-expanded="false">
+            <span class="profile-avatar" id="profile-avatar"></span>
+            <span class="profile-name" id="profile-name"></span>
+          </button>
+          <div class="profile-pop" id="profile-pop" hidden>
+            <div class="profile-head">
+              <span class="profile-avatar profile-avatar-lg" id="profile-pop-avatar"></span>
+              <div class="profile-id">
+                <span class="profile-name profile-pop-name" id="profile-pop-name"></span>
+                <span class="profile-email" id="profile-email" hidden></span>
+              </div>
+            </div>
+            <button id="signout-btn" class="ghost-btn danger profile-signout" type="button">sign out</button>
           </div>
         </div>
       </div>
@@ -198,6 +207,6 @@
   <script src="logo.js?v=3"></script>
   <script src="themes.js?v=2"></script>
   <script src="celebrate.js?v=3"></script>
-  <script type="module" src="app.js?v=34"></script>
+  <script type="module" src="app.js?v=35"></script>
 </body>
 </html>

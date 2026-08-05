@@ -152,15 +152,121 @@ textarea {
   gap: 0.5rem;
 }
 
-.user-name {
+.profile-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.profile-wrap[hidden] {
+  display: none;
+}
+
+.profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  color: var(--ink-soft);
+  background: none;
+  border: 1px solid transparent;
+  padding: 0.2rem 0.4rem 0.2rem 0.2rem;
+  cursor: pointer;
+}
+
+.profile-btn:hover {
+  color: var(--ink);
+  border-color: var(--hair-strong);
+}
+
+.profile-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  overflow: hidden;
+  flex: none;
+}
+
+.profile-avatar svg {
+  width: 62%;
+  height: 62%;
+  fill: currentColor;
+}
+
+.profile-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-name {
   font-family: var(--font-mono);
   font-size: 0.68rem;
   letter-spacing: 0.06em;
   color: var(--ink-soft);
-  max-width: 180px;
+  max-width: 140px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.profile-pop {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  z-index: 40;
+  background: var(--face);
+  border: 1px solid var(--hair-strong);
+  box-shadow: var(--shadow);
+  width: 240px;
+  padding: 0.8rem;
+}
+
+.profile-pop[hidden] {
+  display: none;
+}
+
+.profile-head {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding-bottom: 0.7rem;
+  margin-bottom: 0.7rem;
+  border-bottom: 1px solid var(--hair);
+}
+
+.profile-avatar-lg {
+  width: 40px;
+  height: 40px;
+}
+
+.profile-id {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.profile-pop-name {
+  color: var(--ink);
+}
+
+.profile-email {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.03em;
+  color: var(--ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-signout {
+  width: 100%;
 }
 
 .session-btn {
@@ -358,11 +464,11 @@ textarea {
   background: var(--face);
   border: 1px solid var(--hair-strong);
   box-shadow: var(--shadow);
-  width: 290px;
+  width: 300px;
   max-height: 62vh;
   display: flex;
   flex-direction: column;
-  padding: 0.7rem;
+  padding: 0.8rem;
 }
 
 .themes-pop[hidden] {
@@ -1403,6 +1509,10 @@ body.scramble-hidden .scramble {
 
   .topbar-right {
     gap: 0.35rem;
+  }
+
+  .profile-name {
+    display: none;
   }
 
   .stage {

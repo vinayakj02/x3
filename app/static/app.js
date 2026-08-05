@@ -63,8 +63,6 @@ const el = {
   cubeSize: document.getElementById("cube-size"),
   cubeSizeValue: document.getElementById("cube-size-value"),
   font: document.getElementById("font"),
-  settingsThemesSearch: document.getElementById("settings-themes-search"),
-  settingsThemesList: document.getElementById("settings-themes-list"),
   confirmModal: document.getElementById("confirm-modal"),
   confirmTime: document.getElementById("confirm-time"),
   confirmText: document.getElementById("confirm-text"),
@@ -72,7 +70,14 @@ const el = {
   confirmRedo: document.getElementById("confirm-redo"),
   signInBtn: document.getElementById("signin-btn"),
   signOutBtn: document.getElementById("signout-btn"),
-  userName: document.getElementById("user-name"),
+  profileWrap: document.getElementById("profile-wrap"),
+  profileBtn: document.getElementById("profile-btn"),
+  profileAvatar: document.getElementById("profile-avatar"),
+  profileName: document.getElementById("profile-name"),
+  profilePop: document.getElementById("profile-pop"),
+  profilePopAvatar: document.getElementById("profile-pop-avatar"),
+  profilePopName: document.getElementById("profile-pop-name"),
+  profileEmail: document.getElementById("profile-email"),
 };
 
 const statEl = {
@@ -483,7 +488,6 @@ function renderThemesList(listEl, searchEl) {
 
 function refreshThemeLists() {
   renderThemesList(el.themesList, el.themesSearch);
-  renderThemesList(el.settingsThemesList, el.settingsThemesSearch);
 }
 
 function applyScramble(moves) {
@@ -1215,6 +1219,13 @@ function handleKey(e) {
       closeModal();
       return;
     }
+    const anyPop = [el.themesPop, el.settingsPop, el.profilePop].some(
+      (p) => p && !p.hidden
+    );
+    if (anyPop) {
+      closeOtherPops(null);
+      return;
+    }
     cancelRun();
     return;
   }
@@ -1300,13 +1311,29 @@ document.addEventListener("click", (e) => {
   if (!el.settingsPop.hidden && !e.target.closest(".settings-wrap")) {
     el.settingsPop.hidden = true;
   }
+  if (!el.profilePop.hidden && !e.target.closest(".profile-wrap")) {
+    el.profilePop.hidden = true;
+  }
+  updatePopAria();
 });
 
+function updatePopAria() {
+  const pairs = [
+    [el.themesBtn, el.themesPop],
+    [el.settingsBtn, el.settingsPop],
+    [el.profileBtn, el.profilePop],
+  ];
+  for (const [btn, pop] of pairs) {
+    if (btn && pop) btn.setAttribute("aria-expanded", pop.hidden ? "false" : "true");
+  }
+}
+
 function closeOtherPops(keep) {
-  const pops = [el.themesPop, el.settingsPop, el.sessionPop, el.eventPop];
+  const pops = [el.themesPop, el.settingsPop, el.sessionPop, el.eventPop, el.profilePop];
   pops.forEach((p) => {
     if (p && p !== keep) p.hidden = true;
   });
+  updatePopAria();
 }
 window.addEventListener("resize", () => fitScramble());
 
@@ -1315,6 +1342,7 @@ el.themesBtn.addEventListener("click", (e) => {
   closeOtherPops(el.themesPop);
   el.themesPop.hidden = !el.themesPop.hidden;
   if (!el.themesPop.hidden) renderThemesList(el.themesList, el.themesSearch);
+  updatePopAria();
 });
 el.themesSearch.addEventListener("input", () => renderThemesList(el.themesList, el.themesSearch));
 
@@ -1322,11 +1350,8 @@ el.settingsBtn.addEventListener("click", (e) => {
   e.stopPropagation();
   closeOtherPops(el.settingsPop);
   el.settingsPop.hidden = !el.settingsPop.hidden;
-  if (!el.settingsPop.hidden) renderThemesList(el.settingsThemesList, el.settingsThemesSearch);
+  updatePopAria();
 });
-el.settingsThemesSearch.addEventListener("input", () =>
-  renderThemesList(el.settingsThemesList, el.settingsThemesSearch)
-);
 
 el.nextScramble = document.getElementById("next-scramble");
 el.prevScramble = document.getElementById("prev-scramble");
@@ -1381,16 +1406,54 @@ async function init() {
   await nextScramble();
 }
 
+function setAvatar(container, src) {
+  if (!container) return;
+  if (!src) {
+    container.innerHTML =
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>';
+    return;
+  }
+  const img = document.createElement("img");
+  img.className = "profile-avatar-img";
+  img.src = src;
+  img.alt = "";
+  img.referrerPolicy = "no-referrer";
+  img.draggable = false;
+  img.onerror = () => setAvatar(container, "");
+  container.innerHTML = "";
+  container.appendChild(img);
+}
+
 function renderAuth() {
   const signedIn = auth.isSignedIn();
   const u = auth.getUser();
   el.signInBtn.hidden = signedIn;
-  el.signOutBtn.hidden = !signedIn;
-  el.userName.hidden = !signedIn;
-  el.userName.textContent = signedIn ? (u && (u.name || u.email)) || "signed in" : "";
+  el.profileWrap.hidden = !signedIn;
+  if (!signedIn) {
+    closeOtherPops(null);
+    return;
+  }
+  const name = (u && (u.name || u.email)) || "signed in";
+  el.profileName.textContent = name;
+  el.profilePopName.textContent = name;
+  if (u && u.email && u.name && u.name !== u.email) {
+    el.profileEmail.hidden = false;
+    el.profileEmail.textContent = u.email;
+  } else {
+    el.profileEmail.hidden = true;
+  }
+  const picture = (u && u.picture) || "";
+  setAvatar(el.profileAvatar, picture);
+  setAvatar(el.profilePopAvatar, picture);
 }
 
 el.signInBtn.addEventListener("click", () => auth.login());
+el.profileBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  closeOtherPops(el.profilePop);
+  el.profilePop.hidden = !el.profilePop.hidden;
+  updatePopAria();
+});
 el.signOutBtn.addEventListener("click", async () => {
   await auth.signOut();
   window.location.reload();
