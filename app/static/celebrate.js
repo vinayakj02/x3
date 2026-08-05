@@ -24,22 +24,24 @@
     aurora: { name: "Aurora", colors: ["#34d399", "#6ee7b7", "#67e8f9", "#a5b4fc"], spawn: "aurora", count: 90, life: 140, gravity: -0.005 },
   };
 
-  const THEME_CELEBRATIONS = {
-    "star-wars": { name: "Star Wars", spawn: "ships", colors: ["#4fd8ff", "#ffd84d", "#3dff6e"], count: 20 },
-    "alien": { name: "Alien", spawn: "fallRect", colors: ["#7cfc00", "#8ae99a", "#a3b18a"], count: 60, gravity: 0.02, life: 170 },
-    "blade-runner": { name: "Blade Runner", spawn: "ring", colors: ["#00e5ff", "#ff6e3a"], count: 6, life: 70 },
-    "tron": { name: "Tron", spawn: "ring", colors: ["#00e5ff", "#00bfff"], count: 5, life: 60 },
-    "the-matrix": { name: "Matrix", spawn: "rain", colors: ["#00ff41", "#00e05f"], count: 100, life: 90 },
-    "dune": { name: "Dune", spawn: "geyser", colors: ["#f5c26b", "#e0a94e", "#b0542a"], count: 80, life: 90 },
-    "interstellar": { name: "Interstellar", spawn: "wave", colors: ["#7fb2ff", "#4ade80"], count: 70, life: 90 },
-    "cyberpunk-2077": { name: "Cyberpunk", spawn: "burst", colors: ["#f72585", "#ffd60a", "#3a86ff"], count: 90, life: 70 },
-  };
   const SHIP_IMGS = [];
   for (const src of ["assets/star_warsSpaceship.png", "assets/star_wars_fighter.png"]) {
     const im = new Image();
     im.src = src;
     SHIP_IMGS.push(im);
   }
+  const ALIEN_IMGS = [];
+  for (const src of ["assets/alien_runner.png", "assets/alien_baby.png"]) {
+    const im = new Image();
+    im.src = src;
+    ALIEN_IMGS.push(im);
+  }
+
+  const THEME_CELEBRATIONS = {
+    "star-wars": { name: "Star Wars", spawn: "ships", imgs: SHIP_IMGS, colors: ["#4fd8ff", "#ffd84d", "#3dff6e"], count: 20 },
+    "alien": { name: "Alien", spawn: "ships", imgs: ALIEN_IMGS, colors: ["#7cfc00", "#8ae99a", "#a3b18a"], count: 20, speed: 0.5 },
+    "the-matrix": { name: "Matrix", spawn: "matrixRain", colors: ["#00ff41", "#00e05f", "#d8ffd8"], count: 70 },
+  };
 
   const RECORD_LABELS = { time: "PB", mo3: "mo3", ao5: "ao5", ao12: "ao12", ao100: "ao100" };
   const SEL_KEY = "x3.celebration";
@@ -144,6 +146,7 @@
     let particles = [];
     let rockets = [];
     let ships = [];
+    let rainDrops = [];
 
     function pickColor() { return cfg.colors[Math.floor(Math.random() * cfg.colors.length)]; }
 
@@ -152,13 +155,15 @@
       if (cfg.spawn === "ships") {
         if (ships.length < 8 && Math.random() < 0.4) {
           const fromLeft = Math.random() < 0.5;
-          const img = SHIP_IMGS[Math.random() < 0.55 ? 0 : 1];
+          const imgs = cfg.imgs || SHIP_IMGS;
+          const img = imgs[Math.random() < 0.55 ? 0 : 1];
           const scale = (0.18 + Math.random() * 0.12) * (window.devicePixelRatio > 1 ? 0.8 : 1);
+          const spd = cfg.speed ?? 1;
           ships.push({
             x: fromLeft ? -img.width * scale : W + img.width * scale,
             y: H * 0.1 + Math.random() * H * 0.72,
-            vx: (fromLeft ? 1 : -1) * (4 + Math.random() * 4),
-            vy: (Math.random() - 0.5) * 0.6,
+            vx: (fromLeft ? 1 : -1) * (4 + Math.random() * 4) * spd,
+            vy: (Math.random() - 0.5) * 0.6 * spd,
             img,
             scale,
             rot: fromLeft ? -0.06 : 0.06,
@@ -214,6 +219,11 @@
             break;
           case "aurora":
             particles.push({ x: Math.random() * W, y: H * (0.3 + Math.random() * 0.7), vx: (Math.random() - 0.5) * 0.4, vy: -0.2 - Math.random() * 0.5, shape: "streak", c, size: 20 + Math.random() * 30, life: 0, max: cfg.life, sway: true, phase: Math.random() * 6.28 });
+            break;
+          case "matrixRain":
+            if (rainDrops.length < 70 && Math.random() < 0.6) {
+              rainDrops.push({ x: Math.random() * W, y: -20 - Math.random() * 120, spd: 3 + Math.random() * 7, len: 8 + Math.floor(Math.random() * 8) });
+            }
             break;
           default:
             break;
@@ -281,7 +291,26 @@
         if ((s.vx > 0 && s.x - w / 2 > W) || (s.vx < 0 && s.x + w / 2 < 0)) ships.splice(i, 1);
       }
 
-      if (elapsed < DURATION || particles.length > 0 || ships.length > 0) {
+      if (cfg.spawn === "matrixRain" && rainDrops.length) {
+        const glyphs = "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        ctx.font = "16px 'Space Mono', monospace";
+        for (let i = rainDrops.length - 1; i >= 0; i--) {
+          const d = rainDrops[i];
+          d.y += d.spd;
+          if (d.y > H + 40) { rainDrops.splice(i, 1); continue; }
+          for (let j = 0; j < d.len; j++) {
+            const gy = d.y - j * 17;
+            if (gy < -20 || gy > H + 20) continue;
+            const g = glyphs[Math.floor(Math.random() * glyphs.length)];
+            ctx.globalAlpha = j === 0 ? 0.95 : Math.max(0, 0.7 - (j / d.len) * 0.7);
+            ctx.fillStyle = j === 0 ? "#eaffea" : "#00ff41";
+            ctx.fillText(g, d.x, gy);
+          }
+        }
+        ctx.globalAlpha = 1;
+      }
+
+      if (elapsed < DURATION || particles.length > 0 || ships.length > 0 || rainDrops.length > 0) {
         requestAnimationFrame(frame);
       } else {
         ctx.globalAlpha = 1;
