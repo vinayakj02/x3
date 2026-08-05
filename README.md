@@ -11,14 +11,14 @@
 
 </div>
 
-Inspired by csTimer. Hold to start, WCA random-state scrambles, a few fun themes — and optional Google sign-in to sync your solves across devices.
+Inspired by csTimer. Hold to start, WCA random-state scrambles, a few fun themes, and optional Google sign-in to sync your solves across devices.
 
 ## Features
 
-- **Timer** — hold-to-start (keyboard or touch) with a stackmat-style arm and `+2` / `DNF` penalties
-- **Scrambles** — WCA random-state scrambles via [cubing.js](https://js.cubing.net/cubing/), with an offline fallback
-- **Sync** — fully local by default (your solves stay in the browser); sign in with Google to sync across devices
-- **Themes** — a handful of fun ones, searchable
+- **Timer**: hold-to-start (keyboard or touch) with a stackmat-style arm and `+2` / `DNF` penalties
+- **Scrambles**: WCA random-state scrambles via [cubing.js](https://js.cubing.net/cubing/), with an offline fallback
+- **Sync**: fully local by default (your solves stay in the browser); sign in with Google to sync across devices
+- **Themes**: a handful of fun ones, searchable
 
 ## Tech stack
 
@@ -26,7 +26,7 @@ vanilla HTML/CSS/JS (ES modules) · [cubing.js](https://js.cubing.net/cubing/) �
 
 ## Getting started
 
-Run it locally, test, or set up Google sign-in for local dev — see [docs/README.md](docs/README.md).
+Run it locally, test, or set up Google sign-in for local dev: see [docs/README.md](docs/README.md).
 
 ## License
 

@@ -1,4 +1,4 @@
-# x3 — local development
+# x3: local development
 
 Everything you need to run x3 locally, seed demo data, and test Google sign-in.
 
@@ -44,5 +44,5 @@ Sign-in at `http://localhost:8080` will redirect to Google and back.
 
 ## Troubleshooting
 
-- **Frontend changes don't show up** — static files are baked into the image; rebuild with `--build`, and bump the `?v=` cache-bust query params for `styles.css` / `app.js` when they change.
-- **Google says redirect mismatch** — make sure the redirect URI above matches exactly and the consent screen includes your account as a test user.
+- **Frontend changes don't show up**: static files are baked into the image; rebuild with `--build`, and bump the `?v=` cache-bust query params for `styles.css` / `app.js` when they change.
+- **Google says redirect mismatch**: make sure the redirect URI above matches exactly and the consent screen includes your account as a test user.
