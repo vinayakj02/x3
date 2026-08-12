@@ -28,17 +28,17 @@ jobs:
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
-      - name: Preflight (host validation, DNS drift, disk)
+      - name: Preflight (host validation, IP drift, disk)
         run: |
           set -euo pipefail
           [[ "$HOST" =~ ^[A-Za-z0-9.-]+$ ]] || { echo "PROD_HOST failed validation"; exit 1; }
           ssh_cmd() { ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
             -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o IdentitiesOnly=yes -o LogLevel=ERROR \
             ubuntu@"$HOST" "$1"; }
-          dns=$(dig +short x3.vinayakj02.com A | tail -1 || true)
-          echo "dns=$dns host=$HOST"
-          [ -n "$dns" ] && [ "$dns" = "$HOST" ] || {
-            echo "IP drift detected — update Cloudflare A record + PROD_HOST + PROD_SSH_KNOWN_HOSTS before deploying"; exit 1; }
+          vmip=$(ssh_cmd myip)
+          echo "vm-ip=$vmip host=$HOST"
+          [ -n "$vmip" ] && [ "$vmip" = "$HOST" ] || {
+            echo "IP drift detected — update PROD_HOST + PROD_SSH_KNOWN_HOSTS (and Cloudflare A record) before deploying"; exit 1; }
           avail=$(ssh_cmd disk | awk 'NR==2{print $4}')
           echo "backup disk avail KB: $avail"
           [ -n "$avail" ] && [ "$avail" -gt 102400 ] || { echo "insufficient disk for backups"; exit 1; }
