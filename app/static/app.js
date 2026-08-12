@@ -1309,6 +1309,7 @@ async function stopRun(penalty = "NONE") {
   const beforeBests = penalty === "DNF" ? null : sessionBests(state.solves);
   phase("stopping");
   animateTick();
+  el.readout.textContent = formatTime(elapsed, 3);
   try {
     const saved = await store.createSolve({
       session_id: state.sessionId,
