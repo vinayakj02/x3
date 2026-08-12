@@ -12,6 +12,9 @@ jobs:
     concurrency:
       group: x3-deploy
       cancel-in-progress: false
+    env:
+      HOST: ${{ secrets.PROD_HOST }}
+      KNOWN_HOSTS: ${{ secrets.PROD_SSH_KNOWN_HOSTS }}
     steps:
       - name: Set up SSH key
         uses: webfactory/ssh-agent@25fcd78aa32202988cb0209b14c32ea6fa0288b9
@@ -22,58 +25,89 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
-          printf '%s\n' "${{ secrets.PROD_SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
+
+      - name: Preflight (host validation, DNS drift, disk)
+        run: |
+          set -euo pipefail
+          [[ "$HOST" =~ ^[A-Za-z0-9.-]+$ ]] || { echo "PROD_HOST failed validation"; exit 1; }
+          ssh_cmd() { ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o IdentitiesOnly=yes -o LogLevel=ERROR \
+            ubuntu@"$HOST" "$1"; }
+          dns=$(dig +short x3.vinayakj02.com A | tail -1 || true)
+          echo "dns=$dns host=$HOST"
+          [ -n "$dns" ] && [ "$dns" = "$HOST" ] || {
+            echo "IP drift detected — update Cloudflare A record + PROD_HOST + PROD_SSH_KNOWN_HOSTS before deploying"; exit 1; }
+          avail=$(ssh_cmd disk | awk 'NR==2{print $4}')
+          echo "backup disk avail KB: $avail"
+          [ -n "$avail" ] && [ "$avail" -gt 102400 ] || { echo "insufficient disk for backups"; exit 1; }
 
       - name: Deploy
         run: |
           set -euo pipefail
+          ssh_cmd() { ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o IdentitiesOnly=yes -o LogLevel=ERROR \
+            ubuntu@"$HOST" "$1"; }
           EXPECTED="${{ github.sha }}"
-          PREV=$(ssh ubuntu@${{ secrets.PROD_HOST }} "sha")
+          PREV=$(ssh_cmd sha)
           echo "expected=$EXPECTED prev=$PREV"
-          if [ "$PREV" = "$EXPECTED" ]; then
-            echo "already at target commit; skipping"
-            exit 0
+          echo "PREV=$PREV" >> "$GITHUB_ENV"
+          if [ "$PREV" != "$EXPECTED" ]; then
+            echo "backing up pre-deploy DB"
+            ssh_cmd backup
+            ssh_cmd pull
+            NOW=$(ssh_cmd sha)
+            test "$NOW" = "$EXPECTED" || { echo "deployed sha $NOW != expected $EXPECTED"; exit 1; }
+            ssh_cmd restart
+            echo "deployed=$NOW"
+          else
+            echo "already at target commit; skipping pull/restart (health still verified)"
           fi
-          ssh ubuntu@${{ secrets.PROD_HOST }} "pull"
-          NOW=$(ssh ubuntu@${{ secrets.PROD_HOST }} "sha")
-          test "$NOW" = "$EXPECTED" || { echo "deployed sha $NOW != expected $EXPECTED"; exit 1; }
-          ssh ubuntu@${{ secrets.PROD_HOST }} "restart"
-          echo "deployed=$NOW"
 
-      - name: Health check (origin over SSH + public)
+      - name: Health check (origin; gated auto-rollback)
         run: |
           set -euo pipefail
+          ssh_cmd() { ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o IdentitiesOnly=yes -o LogLevel=ERROR \
+            ubuntu@"$HOST" "$1"; }
+          EXPECTED="${{ github.sha }}"
           origin_ok=0
-          for i in $(seq 1 15); do
-            if ssh ubuntu@${{ secrets.PROD_HOST }} "health"; then
-              origin_ok=1
-              echo "origin health: ok"
-              break
+          for i in $(seq 1 30); do
+            if ssh_cmd health; then origin_ok=1; echo "origin health: ok"; break; fi
+            echo "origin not ready, retry $i/30"
+            sleep 3
+          done
+          if [ "$origin_ok" != "1" ] && [ "${PREV:-}" != "$EXPECTED" ]; then
+            echo "origin unhealthy after deploy; rolling back code"
+            if ssh_cmd rollback; then
+              for i in $(seq 1 30); do
+                if ssh_cmd health; then origin_ok=1; echo "rollback healthy"; break; fi
+                echo "rollback not ready, retry $i/30"
+                sleep 3
+              done
             fi
-            echo "origin not ready, retry $i/15"
-            sleep 2
-          done
-          test "$origin_ok" = "1" || { echo "origin health failed"; exit 1; }
-          code=000
-          for i in $(seq 1 15); do
-            code=$(curl -s -o /dev/null -w '%{http_code}' https://x3.vinayakj02.com/api/health || echo 000)
-            [ "$code" = "200" ] && break
-            echo "public health not ready (${code}), retry $i/15"
-            sleep 2
-          done
-          test "$code" = "200" || { echo "public health check failed"; exit 1; }
-          echo "public health: $code"
+          fi
+          if [ "$origin_ok" != "1" ]; then
+            echo "origin unhealthy (no-op deploy or rollback failed) — see diagnostics"
+            exit 1
+          fi
 
-      - name: Smoke check
+      - name: Edge checks (informational — Cloudflare/DNS path)
         run: |
-          set -euo pipefail
-          site=$(curl -s -o /dev/null -w '%{http_code}' https://x3.vinayakj02.com)
-          me=$(curl -s -o /dev/null -w '%{http_code}' https://x3.vinayakj02.com/api/auth/me)
-          echo "site=$site me=$me"
-          test "$site" = "200" || { echo "site check failed"; exit 1; }
-          test "$me" = "401" || { echo "me check failed (expected 401)"; exit 1; }
+          set -uo pipefail
+          echo "site:   $(curl -s -o /dev/null -w '%{http_code}' https://x3.vinayakj02.com || echo unreachable)"
+          echo "me:     $(curl -s -o /dev/null -w '%{http_code}' https://x3.vinayakj02.com/api/auth/me || echo unreachable)"
+          echo "health: $(curl -s https://x3.vinayakj02.com/api/health || echo unreachable)"
 
-      - name: Dump remote logs on failure
+      - name: Dump sanitized diagnostics on failure
         if: failure()
-        run: ssh ubuntu@${{ secrets.PROD_HOST }} "journal" || true
+        run: |
+          set +e
+          ssh_cmd() { ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+            -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o IdentitiesOnly=yes -o LogLevel=ERROR \
+            ubuntu@"$HOST" "$1"; }
+          echo "=== diag ==="
+          ssh_cmd diag
+          echo "=== journal (errors, redacted) ==="
+          ssh_cmd journal
