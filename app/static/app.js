@@ -893,11 +893,11 @@ function computeSession() {
 function fmtAvg(v) {
   if (v === null || v === undefined) return "—";
   if (v === "DNF") return "DNF";
-  return formatTime(Math.round(v), 2);
+  return formatTime(Math.round(v));
 }
 
 function fmtTimeMs(ms) {
-  return ms === null || ms === undefined ? "—" : formatTime(Math.round(ms), 2);
+  return ms === null || ms === undefined ? "—" : formatTime(Math.round(ms));
 }
 
 function renderStats(session) {
