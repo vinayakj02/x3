@@ -33,7 +33,7 @@ jobs:
           set -euo pipefail
           [[ "$HOST" =~ ^[A-Za-z0-9.-]+$ ]] || { echo "PROD_HOST failed validation"; exit 1; }
           ssh_cmd() { ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
-            -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o IdentitiesOnly=yes -o LogLevel=ERROR \
+            -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o LogLevel=ERROR \
             ubuntu@"$HOST" "$1"; }
           vmip=$(ssh_cmd myip)
           echo "vm-ip=$vmip host=$HOST"
@@ -47,7 +47,7 @@ jobs:
         run: |
           set -euo pipefail
           ssh_cmd() { ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
-            -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o IdentitiesOnly=yes -o LogLevel=ERROR \
+            -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o LogLevel=ERROR \
             ubuntu@"$HOST" "$1"; }
           EXPECTED="${{ github.sha }}"
           PREV=$(ssh_cmd sha)
@@ -69,7 +69,7 @@ jobs:
         run: |
           set -euo pipefail
           ssh_cmd() { ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
-            -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o IdentitiesOnly=yes -o LogLevel=ERROR \
+            -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o LogLevel=ERROR \
             ubuntu@"$HOST" "$1"; }
           EXPECTED="${{ github.sha }}"
           origin_ok=0
@@ -105,7 +105,7 @@ jobs:
         run: |
           set +e
           ssh_cmd() { ssh -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
-            -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o IdentitiesOnly=yes -o LogLevel=ERROR \
+            -o GlobalKnownHostsFile=/dev/null -o BatchMode=yes -o LogLevel=ERROR \
             ubuntu@"$HOST" "$1"; }
           echo "=== diag ==="
           ssh_cmd diag
