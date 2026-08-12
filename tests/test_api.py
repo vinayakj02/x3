@@ -49,6 +49,12 @@ def test_me_ok(client):
     assert r.json()["email"] == "a@b.c"
 
 
+def test_health(client):
+    r = client.get("/api/health")
+    assert r.status_code == 200
+    assert r.json() == {"status": "ok"}
+
+
 def test_sessions_require_auth(client):
     assert client.get("/api/sessions").status_code == 401
 

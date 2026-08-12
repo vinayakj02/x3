@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.auth import purge_expired_tokens
 from app.db import init_db
-from app.routers import auth, sessions, solves, sync
+from app.routers import auth, health, sessions, solves, sync
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -78,6 +78,7 @@ async def security_headers(request: Request, call_next):
 
 
 app.include_router(auth.router)
+app.include_router(health.router)
 app.include_router(sessions.router)
 app.include_router(solves.router)
 app.include_router(sync.router)

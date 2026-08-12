@@ -1,0 +1,46 @@
+name: Deploy x3
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to production
+    if: github.ref == 'refs/heads/release'
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency: x3-deploy
+    steps:
+      - name: Set up SSH key
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.PROD_SSH_KEY }}
+
+      - name: Trust the host
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.PROD_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Pull on the VM
+        run: ssh ubuntu@${{ secrets.PROD_HOST }} "cd /opt/x3 && git pull --ff-only"
+
+      - name: Restart service
+        run: ssh ubuntu@${{ secrets.PROD_HOST }} "sudo systemctl restart x3"
+
+      - name: Health check
+        run: |
+          sleep 3
+          ssh ubuntu@${{ secrets.PROD_HOST }} "systemctl is-active x3"  # expect: active
+          for i in $(seq 1 10); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' https://x3.vinayakj02.com/api/health)
+            [ "$code" = "200" ] && break
+            echo "health not ready (${code}), retry $i/10"
+            sleep 2
+          done
+          test "$code" = "200" || { echo "health check failed"; exit 1; }
+          curl -s https://x3.vinayakj02.com/api/health   # expect: {"status":"ok"}
+
+      - name: Smoke check
+        run: |
+          curl -s -o /dev/null -w 'site: %{http_code}\n' https://x3.vinayakj02.com
+          curl -s -o /dev/null -w 'me:  %{http_code}\n' https://x3.vinayakj02.com/api/auth/me  # expect 401
