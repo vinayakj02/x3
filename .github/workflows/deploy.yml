@@ -44,7 +44,17 @@ jobs:
       - name: Health check (origin over SSH + public)
         run: |
           set -euo pipefail
-          ssh ubuntu@${{ secrets.PROD_HOST }} "health"   # localhost origin, fails hard
+          origin_ok=0
+          for i in $(seq 1 15); do
+            if ssh ubuntu@${{ secrets.PROD_HOST }} "health"; then
+              origin_ok=1
+              echo "origin health: ok"
+              break
+            fi
+            echo "origin not ready, retry $i/15"
+            sleep 2
+          done
+          test "$origin_ok" = "1" || { echo "origin health failed"; exit 1; }
           code=000
           for i in $(seq 1 15); do
             code=$(curl -s -o /dev/null -w '%{http_code}' https://x3.vinayakj02.com/api/health || echo 000)
