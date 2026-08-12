@@ -2,6 +2,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import delete, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.auth import AuthUser, get_current_user
@@ -78,6 +79,17 @@ def create_solve(
     db: Session = Depends(get_db),
     user: AuthUser = Depends(get_current_user),
 ) -> dict:
+    if payload.client_id:
+        existing = db.execute(
+            select(Solve)
+            .join(SessionRecord, SessionRecord.id == Solve.session_id)
+            .where(
+                Solve.client_id == payload.client_id,
+                SessionRecord.user_id == user["id"],
+            )
+        ).scalar_one_or_none()
+        if existing is not None:
+            return to_out(existing)
     session = resolve_session(db, user, payload.session_client_id)
     cid = payload.client_id or uuid.uuid4().hex
     rec = Solve(
@@ -88,8 +100,12 @@ def create_solve(
         time_ms=payload.time_ms,
         penalty=payload.penalty,
     )
-    db.add(rec)
-    db.commit()
+    try:
+        db.add(rec)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="solve already exists")
     db.refresh(rec)
     return to_out(rec)
 

@@ -1,4 +1,4 @@
-import { store, auth } from "./store.js";
+import { store, auth } from "./store.js?v=2";
 
 const state = {
   phase: "idle", // idle | armed | running | stopping
@@ -664,6 +664,19 @@ function newestSession(sessions) {
   );
 }
 
+function mostRecentlyActive(sessions, activity) {
+  let best = null;
+  let bestTs = "";
+  for (const s of sessions) {
+    const ts = activity[s.id] || "";
+    if (ts && (bestTs === "" || ts > bestTs)) {
+      best = s;
+      bestTs = ts;
+    }
+  }
+  return best;
+}
+
 async function loadSessionsForEvent() {
   const all = await store.listSessions();
   state.sessions = all.filter((s) => s.event === state.event);
@@ -680,9 +693,29 @@ async function loadSessionsForEvent() {
   }
   const target =
     state.sessions.find((s) => s.id === saved) ||
+    mostRecentlyActive(state.sessions, store.solveActivity()) ||
     newestSession(state.sessions) ||
     state.sessions[0];
   await loadSession(target.id);
+}
+
+async function resumeActiveSession() {
+  const all = await store.listSessions();
+  const active = mostRecentlyActive(all, store.solveActivity());
+  if (!active) return;
+  if (active.event !== state.event) {
+    state.event = active.event;
+    try {
+      localStorage.setItem("x3.event", active.event);
+    } catch (err) {
+      /* ignore */
+    }
+  }
+  try {
+    localStorage.setItem(SESSION_KEY, active.id);
+  } catch (err) {
+    /* ignore */
+  }
 }
 
 function renderSessionList() {
@@ -1004,6 +1037,7 @@ function findSolve(id) {
 async function patchPenalty(solve, penalty) {
   const next = solve.penalty === penalty ? "NONE" : penalty;
   const updated = await store.patchSolve(solve.id, next);
+  updateSyncBadge();
   const found = findSolve(solve.id);
   if (found) {
     found.penalty = updated.penalty;
@@ -1015,6 +1049,7 @@ async function patchPenalty(solve, penalty) {
 async function deleteSolve(target) {
   const id = target.id || target;
   await store.deleteSolve(id);
+  updateSyncBadge();
   await loadSession(state.sessionId);
 }
 
@@ -1281,7 +1316,8 @@ async function stopRun(penalty = "NONE") {
       time_ms: Math.max(1, Math.round(elapsed)),
       penalty,
     });
-    await nextScramble();
+    nextScramble();
+    updateSyncBadge();
     if (penalty === "DNF") {
       el.instrument.classList.add("flash-dnf");
       setTimeout(() => el.instrument.classList.remove("flash-dnf"), 500);
@@ -1689,7 +1725,13 @@ async function init() {
     /* ignore */
   }
   await auth.init();
+  try {
+    await resumeActiveSession();
+  } catch (err) {
+    /* ignore */
+  }
   renderAuth();
+  updateSyncBadge();
   tickReadout(0);
   initSettings();
   initTheme();
@@ -1761,6 +1803,30 @@ el.profileBtn.addEventListener("click", (e) => {
 el.signOutBtn.addEventListener("click", async () => {
   await auth.signOut();
   window.location.reload();
+});
+
+function updateSyncBadge() {
+  try {
+    const badge = document.getElementById("sync-badge");
+    if (!badge) return;
+    badge.hidden = store.pendingCount() === 0;
+  } catch (err) {
+    /* ignore */
+  }
+}
+
+store.onSync(updateSyncBadge);
+
+window.addEventListener("pagehide", () => {
+  if (auth.isSignedIn()) auth.flush({ keepalive: true });
+});
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden" && auth.isSignedIn()) {
+    auth.flush({ keepalive: true });
+  } else if (document.visibilityState === "visible") {
+    if (auth.isSignedIn()) auth.flush();
+    updateSyncBadge();
+  }
 });
 
 init().catch((err) => {

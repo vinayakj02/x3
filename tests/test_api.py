@@ -309,3 +309,124 @@ def test_base_url_falls_back_in_dev(client, monkeypatch):
     monkeypatch.setenv("GOOGLE_CLIENT_ID", "test-id")
     r = client.get("/api/auth/login", follow_redirects=False)
     assert r.status_code == 302
+
+
+def test_solve_create_idempotent_by_client_id(client):
+    h = {"Authorization": "Bearer tok1"}
+    payload = {
+        "session_client_id": "s1",
+        "client_id": "v-dup",
+        "scramble": "U L",
+        "time_ms": 7777,
+        "penalty": "NONE",
+    }
+    first = client.post("/api/solves", json=payload, headers=h)
+    assert first.status_code == 201
+    second = client.post("/api/solves", json=payload, headers=h)
+    assert second.status_code == 201
+    assert second.json()["client_id"] == "v-dup"
+    listed = client.get("/api/sessions/s1/solves", headers=h).json()
+    assert len([s for s in listed if s["client_id"] == "v-dup"]) == 1
+
+
+def test_solve_create_conflict_across_users(client):
+    with SessionLocal() as db:
+        user = db.execute(
+            select(User).where(User.google_sub == "sub2")
+        ).scalar_one_or_none()
+        if user is None:
+            user = User(google_sub="sub2", email="b@b.c")
+            db.add(user)
+            db.flush()
+        db.add(AuthToken(token=_hash("tok2b"), user_id=user.id))
+        db.commit()
+
+    h2 = {"Authorization": "Bearer tok2b"}
+    sess = client.post(
+        "/api/sessions",
+        json={"name": "S", "event": "333", "client_id": "s-u2"},
+        headers=h2,
+    )
+    assert sess.status_code == 201
+    r = client.post(
+        "/api/solves",
+        json={
+            "session_client_id": "s-u2",
+            "client_id": "v-dup",
+            "scramble": "R",
+            "time_ms": 5000,
+            "penalty": "NONE",
+        },
+        headers=h2,
+    )
+    assert r.status_code == 409
+
+
+def test_sync_keeps_distinct_same_name_sessions(client):
+    h = {"Authorization": "Bearer tok1"}
+    payload = {
+        "sessions": [
+            {
+                "client_id": "s-other",
+                "name": "Local",
+                "event": "333",
+                "created_at": "2026-01-02T00:00:00Z",
+            }
+        ],
+        "solves": [
+            {
+                "client_id": "v-other",
+                "session_client_id": "s-other",
+                "scramble": "U R'",
+                "time_ms": 12345,
+                "penalty": "NONE",
+                "solved_at": "2026-01-02T00:00:01Z",
+            }
+        ],
+        "deleted_sessions": [],
+        "deleted_solves": [],
+    }
+    r = client.post("/api/sync", json=payload, headers=h)
+    assert r.status_code == 200
+    names = [s["name"] for s in r.json()["sessions"]]
+    assert names.count("Local") == 2
+    assert len([v for v in r.json()["solves"] if v["client_id"] == "v-other"]) == 1
+
+
+def test_solve_ops_on_deleted_session_404(client):
+    h = {"Authorization": "Bearer tok1"}
+    created = client.post(
+        "/api/sessions",
+        json={"name": "Doomed", "event": "333", "client_id": "s-doom"},
+        headers=h,
+    )
+    assert created.status_code == 201
+    solve = client.post(
+        "/api/solves",
+        json={
+            "session_client_id": "s-doom",
+            "client_id": "v-doom",
+            "scramble": "F",
+            "time_ms": 6000,
+            "penalty": "NONE",
+        },
+        headers=h,
+    )
+    assert solve.status_code == 201
+    assert client.delete("/api/sessions/s-doom", headers=h).status_code == 204
+
+    assert (
+        client.post(
+            "/api/solves",
+            json={
+                "session_client_id": "s-doom",
+                "client_id": "v-doom2",
+                "scramble": "F",
+                "time_ms": 6000,
+                "penalty": "NONE",
+            },
+            headers=h,
+        ).status_code
+        == 404
+    )
+    assert client.patch("/api/solves/v-doom", json={"penalty": "PLUS_TWO"}, headers=h).status_code == 404

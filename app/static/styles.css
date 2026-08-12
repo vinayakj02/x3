@@ -164,6 +164,22 @@ textarea {
   gap: 0.5rem;
 }
 
+.sync-badge {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  padding: 0.2rem 0.5rem;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  white-space: nowrap;
+  opacity: 0.85;
+}
+
+.sync-badge[hidden] {
+  display: none;
+}
+
 .profile-wrap {
   position: relative;
   display: inline-flex;
