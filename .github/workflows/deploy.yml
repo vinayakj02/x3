@@ -9,38 +9,61 @@ jobs:
     if: github.ref == 'refs/heads/release'
     runs-on: ubuntu-latest
     environment: production
-    concurrency: x3-deploy
+    concurrency:
+      group: x3-deploy
+      cancel-in-progress: false
     steps:
       - name: Set up SSH key
-        uses: webfactory/ssh-agent@v0.9.0
+        uses: webfactory/ssh-agent@25fcd78aa32202988cb0209b14c32ea6fa0288b9
         with:
           ssh-private-key: ${{ secrets.PROD_SSH_KEY }}
 
-      - name: Trust the host
+      - name: Trust the host (pinned key, no TOFU)
         run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.PROD_HOST }} >> ~/.ssh/known_hosts
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.PROD_SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
 
-      - name: Pull on the VM
-        run: ssh ubuntu@${{ secrets.PROD_HOST }} "cd /opt/x3 && git pull --ff-only"
-
-      - name: Restart service
-        run: ssh ubuntu@${{ secrets.PROD_HOST }} "sudo systemctl restart x3"
-
-      - name: Health check
+      - name: Deploy
         run: |
-          sleep 3
-          ssh ubuntu@${{ secrets.PROD_HOST }} "systemctl is-active x3"  # expect: active
-          for i in $(seq 1 10); do
-            code=$(curl -s -o /dev/null -w '%{http_code}' https://x3.vinayakj02.com/api/health)
+          set -euo pipefail
+          EXPECTED="${{ github.sha }}"
+          PREV=$(ssh ubuntu@${{ secrets.PROD_HOST }} "sha")
+          echo "expected=$EXPECTED prev=$PREV"
+          if [ "$PREV" = "$EXPECTED" ]; then
+            echo "already at target commit; skipping"
+            exit 0
+          fi
+          ssh ubuntu@${{ secrets.PROD_HOST }} "pull"
+          NOW=$(ssh ubuntu@${{ secrets.PROD_HOST }} "sha")
+          test "$NOW" = "$EXPECTED" || { echo "deployed sha $NOW != expected $EXPECTED"; exit 1; }
+          ssh ubuntu@${{ secrets.PROD_HOST }} "restart"
+          echo "deployed=$NOW"
+
+      - name: Health check (origin over SSH + public)
+        run: |
+          set -euo pipefail
+          ssh ubuntu@${{ secrets.PROD_HOST }} "health"   # localhost origin, fails hard
+          code=000
+          for i in $(seq 1 15); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' https://x3.vinayakj02.com/api/health || echo 000)
             [ "$code" = "200" ] && break
-            echo "health not ready (${code}), retry $i/10"
+            echo "public health not ready (${code}), retry $i/15"
             sleep 2
           done
-          test "$code" = "200" || { echo "health check failed"; exit 1; }
-          curl -s https://x3.vinayakj02.com/api/health   # expect: {"status":"ok"}
+          test "$code" = "200" || { echo "public health check failed"; exit 1; }
+          echo "public health: $code"
 
       - name: Smoke check
         run: |
-          curl -s -o /dev/null -w 'site: %{http_code}\n' https://x3.vinayakj02.com
-          curl -s -o /dev/null -w 'me:  %{http_code}\n' https://x3.vinayakj02.com/api/auth/me  # expect 401
+          set -euo pipefail
+          site=$(curl -s -o /dev/null -w '%{http_code}' https://x3.vinayakj02.com)
+          me=$(curl -s -o /dev/null -w '%{http_code}' https://x3.vinayakj02.com/api/auth/me)
+          echo "site=$site me=$me"
+          test "$site" = "200" || { echo "site check failed"; exit 1; }
+          test "$me" = "401" || { echo "me check failed (expected 401)"; exit 1; }
+
+      - name: Dump remote logs on failure
+        if: failure()
+        run: ssh ubuntu@${{ secrets.PROD_HOST }} "journal" || true
