@@ -1,4 +1,4 @@
-import { store, auth } from "./store.js?v=2";
+import { store, auth } from "./store.js?v=3";
 
 const state = {
   phase: "idle", // idle | armed | running | stopping
@@ -88,6 +88,10 @@ const el = {
   drawer: document.getElementById("drawer"),
   drawerClose: document.getElementById("drawer-close"),
   historyToggle: document.getElementById("history-toggle"),
+  exportSession: document.getElementById("export-session"),
+  exportAll: document.getElementById("export-all"),
+  shortcutsBtn: document.getElementById("shortcuts-btn"),
+  shortcutsModal: document.getElementById("shortcuts-modal"),
 };
 
 const statEl = {
@@ -473,6 +477,96 @@ function saveSettings() {
   }
 }
 
+/* ---------- data export ---------- */
+
+function exportSessionRow(session) {
+  return {
+    id: session.id,
+    name: session.name,
+    event: session.event,
+    created_at: session.created_at || "",
+  };
+}
+
+function exportSolveRow(solve) {
+  return {
+    id: solve.id,
+    session_id: solve.session_id,
+    scramble: solve.scramble,
+    time_ms: solve.time_ms,
+    adjusted_ms: solve.adjusted_ms,
+    penalty: solve.penalty,
+    solved_at: solve.solved_at,
+  };
+}
+
+function exportData(sessions, solves) {
+  return {
+    format: "x3-solves",
+    version: 1,
+    exported_at: new Date().toISOString(),
+    sessions: sessions.map(exportSessionRow),
+    solves: solves.map(exportSolveRow),
+  };
+}
+
+function safeFilePart(value) {
+  return String(value || "session")
+    .trim()
+    .replace(/[^a-z0-9_-]+/gi, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48) || "session";
+}
+
+function downloadJson(data, filename) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+function exportStatus(text) {
+  el.hint.textContent = text;
+  setTimeout(() => {
+    if (state.phase === "idle") setHint(IDLE_HINT);
+  }, 1800);
+}
+
+function exportCurrentSession() {
+  const session = state.sessions.find((s) => s.id === state.sessionId);
+  if (!session) return;
+  downloadJson(
+    exportData([session], state.solves),
+    `x3-${safeFilePart(session.name)}-${new Date().toISOString().slice(0, 10)}.json`
+  );
+  exportStatus("session exported");
+}
+
+async function exportAllSessions() {
+  if (el.exportAll) el.exportAll.disabled = true;
+  try {
+    const sessions = await store.listSessions();
+    const solves = [];
+    for (const session of sessions) {
+      solves.push(...(await store.listSolves(session.id)));
+    }
+    downloadJson(
+      exportData(sessions, solves),
+      `x3-all-sessions-${new Date().toISOString().slice(0, 10)}.json`
+    );
+    exportStatus("all sessions exported");
+  } catch (err) {
+    exportStatus(`export failed: ${err.message}`);
+  } finally {
+    if (el.exportAll) el.exportAll.disabled = false;
+  }
+}
+
 /* ---------- themes ---------- */
 
 const THEME_KEY = "x3.theme";
@@ -632,6 +726,7 @@ function applyNextScramble(moves) {
 }
 
 function nextScramble() {
+  el.penaltyBar.hidden = true;
   const ready = state.pendingScramble;
   state.pendingScramble = null;
   if (ready) {
@@ -650,6 +745,7 @@ function nextScramble() {
 
 function prevScramble() {
   if (state.scrambleIndex > 0) {
+    el.penaltyBar.hidden = true;
     state.scrambleIndex--;
     applyScramble(state.scrambleList[state.scrambleIndex]);
   }
@@ -739,6 +835,7 @@ function renderSessionList() {
       btn.appendChild(tag);
     }
     btn.addEventListener("click", () => {
+      if (state.phase !== "idle") return;
       el.sessionPop.hidden = true;
       loadSession(s.id);
     });
@@ -774,7 +871,7 @@ function renderEventList() {
 }
 
 async function switchEvent(id) {
-  if (id === state.event) return;
+  if (id === state.event || state.phase !== "idle") return;
   state.event = id;
   try {
     localStorage.setItem("x3.event", id);
@@ -808,6 +905,8 @@ async function loadSession(id) {
     /* ignore */
   }
   state.solves = await store.listSolves(id);
+  const active = state.sessions.find((s) => s.id === id);
+  if (active) active.solve_count = state.solves.length;
   state.rollups = buildRollups(state.solves);
   const session = computeSession();
   renderStats(session);
@@ -817,6 +916,7 @@ async function loadSession(id) {
 }
 
 async function createSession() {
+  if (state.phase !== "idle") return;
   const n = state.sessions.length + 1;
   const created = await store.createSession({ name: `Session ${n}`, event: state.event });
   await loadSessionsForEvent();
@@ -1069,7 +1169,26 @@ function openModal(id) {
 
 function closeModal() {
   el.modal.hidden = true;
+  el.rollupPop.hidden = true;
   state.activeSolveId = null;
+}
+
+let shortcutPreviousFocus = null;
+
+function openShortcuts() {
+  shortcutPreviousFocus = document.activeElement;
+  closeOtherPops(null);
+  el.shortcutsModal.hidden = false;
+  const close = el.shortcutsModal.querySelector("button[data-close-shortcuts]");
+  if (close) close.focus();
+}
+
+function closeShortcuts() {
+  el.shortcutsModal.hidden = true;
+  if (shortcutPreviousFocus && document.contains(shortcutPreviousFocus)) {
+    shortcutPreviousFocus.focus();
+  }
+  shortcutPreviousFocus = null;
 }
 
 function renderModal() {
@@ -1271,11 +1390,16 @@ function holdStart() {
 function holdCancel() {
   state.holding = false;
   clearTimeout(state.holdTimer);
+  state.holdTimer = null;
   if (state.phase === "armed") phase("idle");
 }
 
 function cancelRun() {
-  if (state.phase !== "running" && state.phase !== "armed") return;
+  const active = state.phase === "running" || state.phase === "armed";
+  state.holding = false;
+  clearTimeout(state.holdTimer);
+  state.holdTimer = null;
+  if (!active) return;
   cancelAnimationFrame(state.raf);
   state.elapsedMs = 0;
   phase("idle");
@@ -1288,6 +1412,7 @@ function cancelRun() {
 
 function startRun() {
   clearTimeout(state.holdTimer);
+  state.holdTimer = null;
   if (state.phase !== "armed") return;
   state.startMs = performance.now();
   state.elapsedMs = 0;
@@ -1503,8 +1628,76 @@ function confirmUnusualSolve(solveId) {
 
 /* ---------- input ---------- */
 
+function inputContextActive(e) {
+  const isControl = (node) =>
+    node &&
+    typeof node.closest === "function" &&
+    node.closest("button, input, select, textarea, [contenteditable='true'], [role='button']");
+  const overlays = [
+    el.modal,
+    el.confirmModal,
+    el.themesPop,
+    el.settingsPop,
+    el.sessionPop,
+    el.eventPop,
+    el.profilePop,
+    el.rollupPop,
+    el.shortcutsModal,
+  ];
+  const isHistory = (node) =>
+    node && typeof node.closest === "function" && node.closest(".history");
+  return (
+    (el.drawer && el.drawer.classList.contains("open")) ||
+    overlays.some((node) => node && !node.hidden) ||
+    isControl(e.target) ||
+    isControl(document.activeElement) ||
+    isHistory(e.target) ||
+    isHistory(document.activeElement)
+  );
+}
+
+function canUseGlobalShortcut(e) {
+  return (
+    e.type === "keydown" &&
+    !e.repeat &&
+    !e.isComposing &&
+    !e.ctrlKey &&
+    !e.metaKey &&
+    !e.altKey &&
+    (!e.shiftKey || e.key === "?") &&
+    !inputContextActive(e)
+  );
+}
+
+let shortcutPenaltyBusy = false;
+
+async function applyShortcutPenalty(penalty) {
+  if (
+    shortcutPenaltyBusy ||
+    state.phase !== "idle" ||
+    el.penaltyBar.hidden ||
+    state.lastSolveId == null
+  ) {
+    return;
+  }
+  const solve = findSolve(state.lastSolveId);
+  if (!solve) return;
+  shortcutPenaltyBusy = true;
+  try {
+    await patchPenalty(solve, penalty);
+  } catch (err) {
+    setHint(`failed to mark solve: ${err.message}`);
+  } finally {
+    shortcutPenaltyBusy = false;
+  }
+}
+
 function handleKey(e) {
   if (e.code === "Escape") {
+    if (!el.shortcutsModal.hidden) {
+      closeShortcuts();
+      return;
+    }
     if (!el.confirmModal.hidden) {
       el.confirmKeep.click();
       return;
@@ -1517,7 +1710,14 @@ function handleKey(e) {
       setDrawer(false);
       return;
     }
-    const anyPop = [el.themesPop, el.settingsPop, el.profilePop].some(
+    const anyPop = [
+      el.themesPop,
+      el.settingsPop,
+      el.sessionPop,
+      el.eventPop,
+      el.profilePop,
+      el.rollupPop,
+    ].some(
       (p) => p && !p.hidden
     );
     if (anyPop) {
@@ -1527,9 +1727,48 @@ function handleKey(e) {
     cancelRun();
     return;
   }
+
+  if (canUseGlobalShortcut(e)) {
+    const key = e.key;
+    const lower = key.toLowerCase();
+    if (key === "?") {
+      e.preventDefault();
+      openShortcuts();
+      return;
+    }
+    if (state.phase === "idle") {
+      if (lower === "r" || key === "ArrowRight") {
+        e.preventDefault();
+        nextScramble();
+        return;
+      }
+      if (lower === "p" || key === "ArrowLeft") {
+        e.preventDefault();
+        prevScramble();
+        return;
+      }
+      if (key === "2") {
+        e.preventDefault();
+        void applyShortcutPenalty("PLUS_TWO");
+        return;
+      }
+      if (lower === "d") {
+        e.preventDefault();
+        void applyShortcutPenalty("DNF");
+        return;
+      }
+    }
+  }
+
   if (e.code !== "Space") return;
-  const tag = (e.target.tagName || "").toLowerCase();
-  if (tag === "input" || tag === "select" || tag === "textarea") return;
+  if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) {
+    if (e.type === "keyup") holdCancel();
+    return;
+  }
+  if (inputContextActive(e)) {
+    if (e.type === "keyup") holdCancel();
+    return;
+  }
   e.preventDefault();
   if (e.type === "keydown" && !e.repeat) {
     if (state.phase === "running") {
@@ -1544,21 +1783,39 @@ function handleKey(e) {
     }
     state.holding = false;
     clearTimeout(state.holdTimer);
+    state.holdTimer = null;
+  }
+}
+
+function releasePointer(e) {
+  const target = e.currentTarget;
+  if (!target || e.pointerId == null || typeof target.releasePointerCapture !== "function") return;
+  try {
+    target.releasePointerCapture(e.pointerId);
+  } catch (err) {
+    /* pointer capture may already be gone */
   }
 }
 
 function handlePointer(e) {
-  const target = e.target;
-  if (
-    target.closest &&
-    (target.closest("button") ||
-      target.closest("select") ||
-      target.closest(".badge") ||
-      target.closest(".cube"))
-  ) {
-    return;
-  }
   if (e.type === "pointerdown") {
+    const target = e.target;
+    if (
+      target.closest &&
+      (target.closest("button") ||
+        target.closest("select") ||
+        target.closest(".badge") ||
+        target.closest(".cube"))
+    ) {
+      return;
+    }
+    if (e.currentTarget && e.pointerId != null && typeof e.currentTarget.setPointerCapture === "function") {
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch (err) {
+        /* pointer capture is not available for every input source */
+      }
+    }
     if (state.phase === "running") {
       stopRun();
     } else {
@@ -1570,8 +1827,14 @@ function handlePointer(e) {
     }
     state.holding = false;
     clearTimeout(state.holdTimer);
+    state.holdTimer = null;
+    releasePointer(e);
+  } else if (e.type === "pointercancel" || e.type === "lostpointercapture") {
+    holdCancel();
+    releasePointer(e);
   } else if (e.type === "pointerleave") {
     holdCancel();
+    releasePointer(e);
   }
 }
 
@@ -1582,6 +1845,8 @@ document.addEventListener("keyup", handleKey);
 window.addEventListener("blur", holdCancel);
 el.instrument.addEventListener("pointerdown", handlePointer);
 el.instrument.addEventListener("pointerup", handlePointer);
+el.instrument.addEventListener("pointercancel", handlePointer);
+el.instrument.addEventListener("lostpointercapture", handlePointer);
 el.instrument.addEventListener("pointerleave", handlePointer);
 el.instrument.addEventListener("contextmenu", (e) => e.preventDefault());
 
@@ -1694,10 +1959,21 @@ el.settingsBtn.addEventListener("click", (e) => {
   updatePopAria();
 });
 
+el.exportSession.addEventListener("click", exportCurrentSession);
+el.exportAll.addEventListener("click", exportAllSessions);
+el.shortcutsBtn.addEventListener("click", openShortcuts);
+el.shortcutsModal.querySelectorAll("[data-close-shortcuts]").forEach((btn) => {
+  btn.addEventListener("click", closeShortcuts);
+});
+
 el.nextScramble = document.getElementById("next-scramble");
 el.prevScramble = document.getElementById("prev-scramble");
-el.nextScramble.addEventListener("click", () => nextScramble());
-el.prevScramble.addEventListener("click", prevScramble);
+el.nextScramble.addEventListener("click", () => {
+  if (state.phase === "idle") nextScramble();
+});
+el.prevScramble.addEventListener("click", () => {
+  if (state.phase === "idle") prevScramble();
+});
 
 el.penaltyBar.querySelectorAll(".penalty-btn").forEach((btn) => {
   btn.addEventListener("click", () => onBarPenalty(btn.dataset.penalty));

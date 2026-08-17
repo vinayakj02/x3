@@ -223,6 +223,98 @@ function applyPending(session_id, rows) {
   return out;
 }
 
+function reconcileServerState(serverSessions, serverSolves) {
+  const d = loadLocal();
+  const localSessions = Array.isArray(d.sessions) ? d.sessions : [];
+  const localSolves = Array.isArray(d.solves) ? d.solves : [];
+  const deletedSessions = new Set((d.deletedSessions || []).filter(Boolean));
+  const deletedSolves = new Set((d.deletedSolves || []).filter(Boolean));
+  const pendingBySolve = new Map();
+  const pendingCreates = new Map();
+  const pendingSessionIds = new Set();
+
+  for (const op of loadPending()) {
+    if (!op || !op.client_id) continue;
+    if (op.kind === "create") pendingCreates.set(op.client_id, op);
+    if (op.kind === "create" || op.kind === "patch" || op.kind === "delete") {
+      pendingBySolve.set(op.client_id, op);
+    }
+  }
+  for (const op of pendingBySolve.values()) {
+    if (op.kind !== "delete" && op.session_id) pendingSessionIds.add(op.session_id);
+  }
+
+  const localSolveById = new Map();
+  for (const v of localSolves) {
+    if (!v.id) continue;
+    localSolveById.set(v.id, v);
+    const op = pendingBySolve.get(v.id);
+    if (op && op.kind !== "delete" && v.session_id) pendingSessionIds.add(v.session_id);
+  }
+
+  const sessions = [];
+  for (const s of Array.isArray(serverSessions) ? serverSessions : []) {
+    if (s.id && deletedSessions.has(s.id)) continue;
+    sessions.push(s);
+  }
+  for (const s of localSessions) {
+    if (!s.id || !pendingSessionIds.has(s.id) || deletedSessions.has(s.id)) continue;
+    if (!sessions.some((existing) => existing.id && existing.id === s.id)) sessions.push(s);
+  }
+
+  const solves = [];
+  function addSolve(row) {
+    if (row.id) {
+      const index = solves.findIndex((existing) => existing.id === row.id);
+      if (index >= 0) {
+        solves[index] = row;
+        return;
+      }
+    }
+    solves.push(row);
+  }
+
+  for (const v of Array.isArray(serverSolves) ? serverSolves : []) {
+    if (v.id && deletedSolves.has(v.id)) continue;
+    if (v.session_id && deletedSessions.has(v.session_id)) continue;
+    const pending = v.id ? pendingBySolve.get(v.id) : null;
+    if (pending && pending.kind === "delete") continue;
+    const local = v.id ? localSolveById.get(v.id) : null;
+    addSolve(pending && local ? { ...local } : v);
+  }
+  for (const v of localSolves) {
+    const pending = v.id ? pendingBySolve.get(v.id) : null;
+    if (!pending || pending.kind === "delete") continue;
+    if (v.id && deletedSolves.has(v.id)) continue;
+    if (v.session_id && deletedSessions.has(v.session_id)) continue;
+    addSolve({ ...v });
+  }
+  for (const [id, op] of pendingCreates) {
+    const pending = pendingBySolve.get(id);
+    if (!pending || pending.kind === "delete" || deletedSolves.has(id)) continue;
+    if (solves.some((v) => v.id === id)) continue;
+    addSolve({
+      id,
+      session_id: op.session_id,
+      scramble: op.scramble,
+      time_ms: op.time_ms,
+      penalty: op.penalty,
+      adjusted_ms: adjustedMs(op.time_ms, op.penalty),
+      solved_at: op.solved_at,
+    });
+  }
+  for (const op of pendingBySolve.values()) {
+    if (op.kind !== "patch") continue;
+    const row = solves.find((v) => v.id === op.client_id);
+    if (row) {
+      row.penalty = op.penalty;
+      row.adjusted_ms = adjustedMs(row.time_ms, op.penalty);
+    }
+  }
+
+  return { ...d, sessions, solves };
+}
+
 const server = {
   async listSessions() {
     return (await serverApi("/api/sessions")).map(mapSession);
@@ -324,10 +416,24 @@ async function flushOnce(opts = {}) {
       await sendOp({ ...op, keepalive: !!opts.keepalive });
     } catch (err) {
       if (err && err.status === 404) {
-        ops.shift();
-        savePending(ops);
+        if (op.kind === "delete") {
+          ops.shift();
+          savePending(ops);
+          notifySync();
+          continue;
+        }
+        const hasLaterDelete = ops
+          .slice(1)
+          .some((candidate) => candidate.client_id === op.client_id && candidate.kind === "delete");
+        if (hasLaterDelete) {
+          // A locally deleted row no longer needs an unsynced create or patch.
+          savePending(ops.filter((candidate) => candidate.client_id !== op.client_id));
+          notifySync();
+          continue;
+        }
+        // Keep creates and patches for a later sign-in or retry.
         notifySync();
-        continue;
+        return;
       }
       return;
     }
@@ -408,14 +514,33 @@ async function mergeLocalToServer() {
   const d = loadLocal();
   const serverSessions = await server.listSessions();
   const mergeMap = new Map();
-  for (const s of d.sessions || []) {
-    const match = serverSessions.find(
-      (x) => x.name === s.name && x.event === s.event && x.id !== s.id
-    );
-    if (match) mergeMap.set(s.id, match.id);
+  const localSessions = Array.isArray(d.sessions) ? d.sessions : [];
+  const unmatchedLocal = localSessions.filter(
+    (s) => s.id && !serverSessions.some((x) => x.id && x.id === s.id)
+  );
+  const unmatchedServer = serverSessions.filter(
+    (s) => s.id && !localSessions.some((x) => x.id && x.id === s.id)
+  );
+  const localGroups = new Map();
+  const serverGroups = new Map();
+  function addToGroup(groups, s) {
+    if (!s.created_at) return;
+    const key = JSON.stringify([s.name, s.event, s.created_at]);
+    const group = groups.get(key) || [];
+    group.push(s);
+    groups.set(key, group);
+  }
+  for (const s of unmatchedLocal) addToGroup(localGroups, s);
+  for (const s of unmatchedServer) addToGroup(serverGroups, s);
+  // Client IDs are authoritative; timestamp matching is only for unambiguous legacy rows.
+  for (const [key, localGroup] of localGroups) {
+    const serverGroup = serverGroups.get(key) || [];
+    if (localGroup.length === 1 && serverGroup.length === 1) {
+      mergeMap.set(localGroup[0].id, serverGroup[0].id);
+    }
   }
   const sessions = [];
-  for (const s of d.sessions || []) {
+  for (const s of localSessions) {
     if (mergeMap.has(s.id)) continue;
     sessions.push({
       client_id: s.id,
@@ -452,26 +577,27 @@ async function mergeLocalToServer() {
     body: JSON.stringify({
       sessions,
       solves,
-      deleted_sessions: (d.deletedSessions || []).filter((id) => !mergeMap.has(id)),
+      deleted_sessions: (d.deletedSessions || []).map((id) => mergeMap.get(id) || id),
       deleted_solves: d.deletedSolves || [],
     }),
   });
-  saveLocal({
-    sessions: res.sessions.map(mapSession),
-    solves: res.solves.map(mapSolve),
-  });
+  const reconciled = reconcileServerState(
+    res.sessions.map(mapSession),
+    res.solves.map(mapSolve)
+  );
+  // The sync response has acknowledged both tombstone lists.
+  delete reconciled.deletedSessions;
+  delete reconciled.deletedSolves;
+  saveLocal(reconciled);
   setReady();
 }
 
 async function pullServerState() {
-  const sessions = await server.listSessions();
-  const solves = [];
-  for (const s of sessions) {
-    solves.push(...(await server.listSolves(s.id)));
-  }
-  saveLocal({ sessions, solves });
+  const state = await loadServerState();
+  const reconciled = reconcileServerState(state.sessions, state.solves);
+  saveLocal(reconciled);
   setReady();
-  return { sessions, solves };
+  return reconciled;
 }
 
 export const auth = {
@@ -572,7 +698,7 @@ export const auth = {
     }
     try {
       const d = await loadServerState();
-      saveLocal(d);
+      saveLocal(reconcileServerState(d.sessions, d.solves));
     } catch (err) {
       /* keep local as-is */
     }
@@ -586,11 +712,6 @@ export const auth = {
     mode = "local";
     try {
       localStorage.removeItem(TOKEN_KEY);
-    } catch (e) {
-      /* ignore */
-    }
-    try {
-      localStorage.removeItem(PENDING_KEY);
     } catch (e) {
       /* ignore */
     }

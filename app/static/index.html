@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.cubing.net/v0/js/cubing/twisty" type="module" integrity="sha384-NS/RLzrthoePAHnoX1ny1q2BOPpsDWFiSa4KkaPu35uG7ToL1Dj/jCWkku0mLPBO" crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="styles.css?v=54" />
+  <link rel="stylesheet" href="styles.css?v=55" />
 </head>
 <body>
   <header class="topbar">
@@ -77,6 +77,14 @@
               <div class="settings-range">
                 <label class="switch-row" for="font" style="min-width:72px">font</label>
                 <select id="font" class="settings-select"></select>
+              </div>
+            </div>
+            <div class="settings-section">
+              <h4>controls</h4>
+              <div class="settings-actions">
+                <button id="export-session" class="ghost-btn settings-action" type="button" aria-label="export current session as JSON">export session</button>
+                <button id="export-all" class="ghost-btn settings-action" type="button" aria-label="export all sessions as JSON">export all</button>
+                <button id="shortcuts-btn" class="ghost-btn settings-action" type="button" aria-haspopup="dialog" aria-controls="shortcuts-modal">keyboard shortcuts</button>
               </div>
             </div>
           </div>
@@ -233,9 +241,26 @@
     </div>
   </div>
 
+  <div class="modal" id="shortcuts-modal" hidden>
+    <div class="modal-backdrop" data-close-shortcuts></div>
+    <div class="modal-card shortcuts-card" role="dialog" aria-modal="true" aria-labelledby="shortcuts-title">
+      <button class="modal-close" data-close-shortcuts aria-label="close shortcuts" type="button">x</button>
+      <h3 class="modal-title" id="shortcuts-title">keyboard shortcuts</h3>
+      <dl class="shortcuts-list">
+        <div><dt><kbd>Space</kbd></dt><dd>hold to arm, release to start, press to stop</dd></div>
+        <div><dt><kbd>R</kbd> / <kbd>Right</kbd></dt><dd>next scramble</dd></div>
+        <div><dt><kbd>P</kbd> / <kbd>Left</kbd></dt><dd>previous scramble</dd></div>
+        <div><dt><kbd>2</kbd></dt><dd>toggle +2 while post-solve controls are visible</dd></div>
+        <div><dt><kbd>D</kbd></dt><dd>toggle DNF while post-solve controls are visible</dd></div>
+        <div><dt><kbd>?</kbd></dt><dd>open shortcuts</dd></div>
+        <div><dt><kbd>Escape</kbd></dt><dd>close / cancel</dd></div>
+      </dl>
+    </div>
+  </div>
+
   <script src="logo.js?v=3"></script>
   <script src="themes.js?v=4"></script>
   <script src="celebrate.js?v=6"></script>
-  <script type="module" src="app.js?v=54"></script>
+  <script type="module" src="app.js?v=55"></script>
 </body>
 </html>

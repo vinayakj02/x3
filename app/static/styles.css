@@ -522,6 +522,18 @@ textarea {
   accent-color: var(--accent);
 }
 
+.settings-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.settings-action {
+  width: 100%;
+  border-color: var(--hair);
+  text-align: left;
+}
+
 /* ---------- themes panel ---------- */
 
 .themes-wrap {
@@ -1440,6 +1452,48 @@ body.scramble-hidden .scramble {
   color: var(--bad);
 }
 
+.shortcuts-card {
+  width: min(420px, 100%);
+}
+
+.shortcuts-list {
+  display: grid;
+  grid-template-columns: minmax(4.5rem, auto) minmax(0, 1fr);
+  gap: 0.45rem 0.9rem;
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+}
+
+.shortcuts-list div {
+  display: contents;
+}
+
+.shortcuts-list dt {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.shortcuts-list dd {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.35;
+}
+
+.shortcuts-list kbd {
+  display: inline-block;
+  min-width: 2rem;
+  padding: 0.14rem 0.35rem;
+  border: 1px solid var(--hair-strong);
+  border-radius: 0;
+  background: var(--face-deep);
+  font-family: inherit;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+
 .modal-scramble {
   font-family: var(--font-mono);
   font-size: 1.05rem;
@@ -1771,6 +1825,10 @@ body.scramble-hidden .scramble {
 
   .penalty-btn,
   .scramble-nav .ghost-btn {
+    min-height: 44px;
+  }
+
+  .settings-action {
     min-height: 44px;
   }
 
