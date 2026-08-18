@@ -6,6 +6,7 @@ const READY_KEY = "x3.serverReady";
 let mode = "local"; // "local" | "server"
 let token = "";
 let user = null;
+let flushBlocked = false;
 
 function setReady() {
   try {
@@ -193,9 +194,14 @@ function mapSolve(v) {
 
 function applyPending(session_id, rows) {
   const ops = loadPending();
-  let out = rows.slice();
+  const d = loadLocal();
+  const deletedSessions = new Set((d.deletedSessions || []).filter(Boolean));
+  const deletedSolves = new Set((d.deletedSolves || []).filter(Boolean));
+  if (deletedSessions.has(session_id)) return [];
+  let out = rows.filter((s) => !deletedSolves.has(s.id));
   for (const op of ops) {
     if (op.kind === "create" && op.session_id === session_id) {
+      if (deletedSolves.has(op.client_id)) continue;
       if (!out.some((s) => s.id === op.client_id)) {
         out.push({
           id: op.client_id,
@@ -317,7 +323,10 @@ function reconcileServerState(serverSessions, serverSolves) {
 
 const server = {
   async listSessions() {
-    return (await serverApi("/api/sessions")).map(mapSession);
+    const deletedSessions = new Set((loadLocal().deletedSessions || []).filter(Boolean));
+    return (await serverApi("/api/sessions"))
+      .map(mapSession)
+      .filter((s) => !deletedSessions.has(s.id));
   },
   async createSession({ name, event }) {
     return mapSession(await serverApi("/api/sessions", { method: "POST", body: JSON.stringify({ name, event }) }));
@@ -432,6 +441,7 @@ async function flushOnce(opts = {}) {
           continue;
         }
         // Keep creates and patches for a later sign-in or retry.
+        flushBlocked = true;
         notifySync();
         return;
       }
@@ -446,7 +456,7 @@ async function flushOnce(opts = {}) {
 let flushChain = Promise.resolve();
 
 function scheduleFlush(opts) {
-  if (mode !== "server" || !token) return;
+  if (mode !== "server" || !token || flushBlocked) return;
   flushChain = flushChain.then(() => flushOnce(opts)).catch(() => {});
 }
 
@@ -614,6 +624,7 @@ export const auth = {
     scheduleFlush(opts);
   },
   async init() {
+    flushBlocked = false;
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
     if (code) {

@@ -92,6 +92,7 @@ const el = {
   exportAll: document.getElementById("export-all"),
   shortcutsBtn: document.getElementById("shortcuts-btn"),
   shortcutsModal: document.getElementById("shortcuts-modal"),
+  shortcutHint: document.getElementById("shortcut-hint"),
 };
 
 const statEl = {
@@ -1185,10 +1186,14 @@ function openShortcuts() {
 
 function closeShortcuts() {
   el.shortcutsModal.hidden = true;
-  if (shortcutPreviousFocus && document.contains(shortcutPreviousFocus)) {
-    shortcutPreviousFocus.focus();
-  }
+  const previousFocus = shortcutPreviousFocus;
   shortcutPreviousFocus = null;
+  if (previousFocus === el.shortcutHint) {
+    el.instrument.tabIndex = -1;
+    el.instrument.focus({ preventScroll: true });
+  } else if (previousFocus && document.contains(previousFocus)) {
+    previousFocus.focus();
+  }
 }
 
 function renderModal() {
@@ -1367,6 +1372,10 @@ function animateTick() {
 function phase(next) {
   state.phase = next;
   el.instrument.classList.remove("armed", "running", "flash-ok", "flash-bad");
+  const shortcutHidden = next !== "idle";
+  el.shortcutHint.classList.toggle("shortcut-hidden", shortcutHidden);
+  el.shortcutHint.tabIndex = shortcutHidden ? -1 : 0;
+  el.shortcutHint.setAttribute("aria-hidden", shortcutHidden ? "true" : "false");
   if (next === "armed") {
     el.instrument.classList.add("armed");
     setHint("release to start");
@@ -1962,6 +1971,7 @@ el.settingsBtn.addEventListener("click", (e) => {
 el.exportSession.addEventListener("click", exportCurrentSession);
 el.exportAll.addEventListener("click", exportAllSessions);
 el.shortcutsBtn.addEventListener("click", openShortcuts);
+el.shortcutHint.addEventListener("click", openShortcuts);
 el.shortcutsModal.querySelectorAll("[data-close-shortcuts]").forEach((btn) => {
   btn.addEventListener("click", closeShortcuts);
 });

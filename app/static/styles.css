@@ -1202,6 +1202,60 @@ body.scramble-hidden .scramble {
   padding: 0 0.3em;
 }
 
+.hint-row {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 1.7rem;
+}
+
+.shortcut-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 1.8rem;
+  min-height: 1.7rem;
+  justify-content: center;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  padding: 0.2rem 0.3rem;
+  cursor: pointer;
+}
+
+.shortcut-hint:hover {
+  color: var(--accent);
+}
+
+.shortcut-hint.shortcut-hidden {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.shortcut-hint:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.shortcut-hint[hidden] {
+  display: none;
+}
+
+.shortcut-hint kbd {
+  min-width: 1.3rem;
+  padding: 0.08rem 0.2rem;
+  border: 1px solid var(--hair-strong);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0;
+  text-align: center;
+}
+
 .instrument.armed .hint {
   color: var(--ok);
 }
@@ -1836,6 +1890,10 @@ body.scramble-hidden .scramble {
     display: none;
   }
 
+  .shortcut-hint {
+    display: none;
+  }
+
   .cube {
     --cube-size: 72px;
   }
@@ -1970,6 +2028,10 @@ body.scramble-hidden .scramble {
 
   .hint {
     font-size: 0.62rem;
+  }
+
+  .shortcut-hint {
+    display: none;
   }
 
   .cube {
