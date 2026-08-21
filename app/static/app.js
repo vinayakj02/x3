@@ -1767,6 +1767,22 @@ function inputContextActive(e) {
   );
 }
 
+function helpContextBlocked(e) {
+  const isTyping = (node) =>
+    node &&
+    typeof node.closest === "function" &&
+    node.closest("input, textarea, select, [contenteditable='true']");
+  return (
+    state.phase !== "idle" ||
+    (el.drawer && el.drawer.classList.contains("open")) ||
+    [el.modal, el.confirmModal, el.sessionModal, el.actionModal, el.shortcutsModal].some(
+      (n) => n && !n.hidden
+    ) ||
+    isTyping(e.target) ||
+    isTyping(document.activeElement)
+  );
+}
+
 function canUseGlobalShortcut(e) {
   return (
     e.type === "keydown" &&
@@ -1847,14 +1863,25 @@ function handleKey(e) {
     return;
   }
 
+  // Help is non-destructive, so it stays reachable even with a button focused.
+  if (
+    e.type === "keydown" &&
+    e.key === "?" &&
+    !e.repeat &&
+    !e.isComposing &&
+    !e.ctrlKey &&
+    !e.metaKey &&
+    !e.altKey &&
+    !helpContextBlocked(e)
+  ) {
+    e.preventDefault();
+    openShortcuts();
+    return;
+  }
+
   if (canUseGlobalShortcut(e)) {
     const key = e.key;
     const lower = key.toLowerCase();
-    if (key === "?") {
-      e.preventDefault();
-      openShortcuts();
-      return;
-    }
     if (state.phase === "idle") {
       if (lower === "r" || key === "ArrowRight") {
         e.preventDefault();
