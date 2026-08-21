@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.cubing.net/v0/js/cubing/twisty" type="module" integrity="sha384-NS/RLzrthoePAHnoX1ny1q2BOPpsDWFiSa4KkaPu35uG7ToL1Dj/jCWkku0mLPBO" crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="styles.css?v=58" />
+  <link rel="stylesheet" href="styles.css?v=59" />
 </head>
 <body>
   <header class="topbar">
@@ -80,6 +80,16 @@
               <div class="settings-range">
                 <label class="switch-row" for="font" style="min-width:72px">font</label>
                 <select id="font" class="settings-select"></select>
+              </div>
+            </div>
+            <div class="settings-section">
+              <h4>history graph</h4>
+              <div class="settings-range">
+                <label class="switch-row" for="spark-mode" style="min-width:72px">style</label>
+                <select id="spark-mode" class="settings-select">
+                  <option value="line">line</option>
+                  <option value="swarm">solve swarm</option>
+                </select>
               </div>
             </div>
             <div class="settings-section">
@@ -300,6 +310,6 @@
   <script src="logo.js?v=3"></script>
   <script src="themes.js?v=4"></script>
   <script src="celebrate.js?v=6"></script>
-  <script type="module" src="app.js?v=58"></script>
+  <script type="module" src="app.js?v=59"></script>
 </body>
 </html>

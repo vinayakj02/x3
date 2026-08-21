@@ -70,6 +70,7 @@ const el = {
   cubeSize: document.getElementById("cube-size"),
   cubeSizeValue: document.getElementById("cube-size-value"),
   font: document.getElementById("font"),
+  sparkMode: document.getElementById("spark-mode"),
   confirmModal: document.getElementById("confirm-modal"),
   confirmTime: document.getElementById("confirm-time"),
   confirmText: document.getElementById("confirm-text"),
@@ -442,8 +443,12 @@ function initSettings() {
     cubeSize: 118,
     fontDisplay: "Space Grotesk",
     fontMono: "Space Mono",
+    sparkMode: "line",
     ...(saved || {}),
   };
+  if (saved && saved.sparkMode !== "swarm" && saved.sparkMode !== "line") {
+    state.settings.sparkMode = "line";
+  }
   if (saved && saved.font) {
     state.settings.fontDisplay = saved.font;
     state.settings.fontMono = saved.font;
@@ -479,6 +484,12 @@ function initSettings() {
     state.settings.fontMono = f;
     saveSettings();
     applySettings();
+  });
+  el.sparkMode.value = state.settings.sparkMode;
+  el.sparkMode.addEventListener("change", () => {
+    state.settings.sparkMode = el.sparkMode.value === "swarm" ? "swarm" : "line";
+    saveSettings();
+    renderSparkline();
   });
 }
 
@@ -1099,19 +1110,89 @@ function renderSolves() {
   });
 }
 
+let sparkDots = null;
+
+function ensureSparkDots() {
+  if (!sparkDots) {
+    sparkDots = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    sparkDots.id = "spark-dots";
+    el.sparkline.appendChild(sparkDots);
+  }
+  return sparkDots;
+}
+
+function renderSparkSwarm(values, nonNull) {
+  const dots = ensureSparkDots();
+  dots.innerHTML = "";
+  el.sparklinePath.setAttribute("d", "");
+  const min = Math.min(...nonNull);
+  const max = Math.max(...nonNull);
+  const range = max - min || 1;
+  const W = 320;
+  const H = 44;
+  const pad = 4;
+  const x = (i) => pad + (i / (values.length - 1)) * (W - pad * 2);
+  const y = (v) => pad + (1 - (v - min) / range) * (H - pad * 2);
+  const bestVal = Math.min(...nonNull);
+  const worstVal = Math.max(...nonNull);
+  const ns = "http://www.w3.org/2000/svg";
+  values.forEach((v, i) => {
+    if (v === null) {
+      const cx = x(i);
+      const cy = pad + 1.5;
+      const mark = document.createElementNS(ns, "path");
+      mark.setAttribute(
+        "d",
+        `M${(cx - 1.8).toFixed(1)} ${(cy - 1.8).toFixed(1)}L${(cx + 1.8).toFixed(1)} ${(cy + 1.8).toFixed(1)}M${(cx + 1.8).toFixed(1)} ${(cy - 1.8).toFixed(1)}L${(cx - 1.8).toFixed(1)} ${(cy + 1.8).toFixed(1)}`
+      );
+      mark.setAttribute("stroke", "var(--bad)");
+      mark.setAttribute("stroke-width", "1.1");
+      mark.setAttribute("opacity", "0.75");
+      dots.appendChild(mark);
+      return;
+    }
+    const dot = document.createElementNS(ns, "circle");
+    dot.setAttribute("cx", x(i).toFixed(1));
+    dot.setAttribute("cy", y(v).toFixed(1));
+    dot.setAttribute("r", v === bestVal || v === worstVal ? "2.6" : "2");
+    if (v === bestVal) {
+      dot.setAttribute("fill", "var(--ok)");
+    } else if (v === worstVal) {
+      dot.setAttribute("fill", "var(--bad)");
+    } else {
+      dot.setAttribute("fill", "var(--accent)");
+      dot.setAttribute("opacity", "0.55");
+    }
+    dot.setAttribute("stroke", "var(--face-deep)");
+    dot.setAttribute("stroke-width", "0.8");
+    const label = document.createElementNS(ns, "title");
+    label.textContent = formatTime(v);
+    dot.appendChild(label);
+    dots.appendChild(dot);
+  });
+}
+
 function renderSparkline() {
   const values = state.solves.map((s) =>
     s.penalty === "DNF" ? null : s.adjusted_ms
   );
   const nonNull = values.filter((v) => v !== null);
   const show = nonNull.length >= 2;
-  el.sparklineBest.classList.toggle("hidden", !show);
-  el.sparklineWorst.classList.toggle("hidden", !show);
+  const swarm = state.settings.sparkMode === "swarm";
+  el.sparklineBest.classList.toggle("hidden", !show || swarm);
+  el.sparklineWorst.classList.toggle("hidden", !show || swarm);
   el.sparkEmpty.hidden = show;
+  const dots = ensureSparkDots();
   if (!show) {
+    dots.innerHTML = "";
     el.sparklinePath.setAttribute("d", "");
     return;
   }
+  if (swarm) {
+    renderSparkSwarm(values, nonNull);
+    return;
+  }
+  dots.innerHTML = "";
   const min = Math.min(...nonNull);
   const max = Math.max(...nonNull);
   const range = max - min || 1;
