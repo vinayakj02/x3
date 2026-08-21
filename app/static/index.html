@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.cubing.net/v0/js/cubing/twisty" type="module" integrity="sha384-NS/RLzrthoePAHnoX1ny1q2BOPpsDWFiSa4KkaPu35uG7ToL1Dj/jCWkku0mLPBO" crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="styles.css?v=56" />
+  <link rel="stylesheet" href="styles.css?v=57" />
 </head>
 <body>
   <header class="topbar">
@@ -126,6 +126,7 @@
           <div class="session-pop" id="session-pop" hidden></div>
         </div>
         <button id="new-session" class="ghost-btn" type="button" title="new session">+</button>
+        <button id="session-manage" class="ghost-btn session-manage" type="button" title="manage session" aria-haspopup="dialog">⋯</button>
       </div>
 
       <section class="stats" aria-label="Session statistics">
@@ -263,9 +264,39 @@
     </div>
   </div>
 
+  <div class="modal" id="session-modal" hidden>
+    <div class="modal-backdrop" data-close-session></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="session-modal-title">
+      <button class="modal-close" data-close-session aria-label="close" type="button">✕</button>
+      <h3 class="modal-title" id="session-modal-title">session</h3>
+      <label class="field-label" for="session-name">name</label>
+      <input id="session-name" class="text-input" type="text" maxlength="64" autocomplete="off" />
+      <div class="session-meta" id="session-meta"></div>
+      <div class="modal-actions">
+        <button class="ghost-btn" id="session-save" type="button">save name</button>
+        <span class="modal-spacer" aria-hidden="true"></span>
+        <button class="ghost-btn danger" id="session-clear" type="button">clear solves</button>
+        <button class="ghost-btn danger" id="session-delete" type="button">delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="action-modal" hidden>
+    <div class="modal-backdrop" data-close-action></div>
+    <div class="modal-card" role="alertdialog" aria-modal="true" aria-labelledby="action-title">
+      <h3 class="modal-title" id="action-title">confirm</h3>
+      <p class="confirm-text" id="action-text"></p>
+      <div class="modal-actions">
+        <button class="ghost-btn" id="action-cancel" type="button">cancel</button>
+        <span class="modal-spacer" aria-hidden="true"></span>
+        <button class="ghost-btn danger" id="action-confirm" type="button">confirm</button>
+      </div>
+    </div>
+  </div>
+
   <script src="logo.js?v=3"></script>
   <script src="themes.js?v=4"></script>
   <script src="celebrate.js?v=6"></script>
-  <script type="module" src="app.js?v=56"></script>
+  <script type="module" src="app.js?v=57"></script>
 </body>
 </html>

@@ -93,6 +93,18 @@ const el = {
   shortcutsBtn: document.getElementById("shortcuts-btn"),
   shortcutsModal: document.getElementById("shortcuts-modal"),
   shortcutHint: document.getElementById("shortcut-hint"),
+  sessionManage: document.getElementById("session-manage"),
+  sessionModal: document.getElementById("session-modal"),
+  sessionName: document.getElementById("session-name"),
+  sessionMeta: document.getElementById("session-meta"),
+  sessionSave: document.getElementById("session-save"),
+  sessionClear: document.getElementById("session-clear"),
+  sessionDelete: document.getElementById("session-delete"),
+  actionModal: document.getElementById("action-modal"),
+  actionTitle: document.getElementById("action-title"),
+  actionText: document.getElementById("action-text"),
+  actionCancel: document.getElementById("action-cancel"),
+  actionConfirm: document.getElementById("action-confirm"),
 };
 
 const statEl = {
@@ -1196,6 +1208,94 @@ function closeShortcuts() {
   }
 }
 
+let actionResolve = null;
+
+function resolveAction(result) {
+  if (!actionResolve) return;
+  el.actionModal.hidden = true;
+  const resolve = actionResolve;
+  actionResolve = null;
+  resolve(result);
+}
+
+function openActionConfirm(title, text, confirmLabel) {
+  return new Promise((resolve) => {
+    el.actionTitle.textContent = title;
+    el.actionText.textContent = text;
+    el.actionConfirm.textContent = confirmLabel;
+    el.actionModal.hidden = false;
+    el.actionCancel.focus();
+    actionResolve = resolve;
+  });
+}
+
+function openSessionModal() {
+  if (state.phase !== "idle") return;
+  const session = state.sessions.find((s) => s.id === state.sessionId);
+  if (!session) return;
+  closeOtherPops(null);
+  el.sessionName.value = session.name;
+  const created = session.created_at ? formatStamp(session.created_at) : "";
+  el.sessionMeta.textContent = `${session.solve_count} solves${created ? ` · created ${created}` : ""}`;
+  el.sessionModal.hidden = false;
+  el.sessionName.focus();
+}
+
+function closeSessionModal() {
+  el.sessionModal.hidden = true;
+}
+
+async function onSaveSessionName() {
+  const name = el.sessionName.value.trim();
+  if (!name) return;
+  try {
+    const updated = await store.renameSession(state.sessionId, name);
+    const session = state.sessions.find((s) => s.id === state.sessionId);
+    if (session) {
+      session.name = updated.name;
+      session.solve_count = updated.solve_count;
+    }
+    renderSessionList();
+    closeSessionModal();
+  } catch (err) {
+    el.sessionMeta.textContent = `rename failed: ${err.message}`;
+  }
+}
+
+async function onClearSession() {
+  const session = state.sessions.find((s) => s.id === state.sessionId);
+  if (!session) return;
+  const ok = await openActionConfirm(
+    "clear solves",
+    `Delete all ${session.solve_count} solves in "${session.name}"? This cannot be undone.`,
+    "clear"
+  );
+  if (!ok) return;
+  closeSessionModal();
+  await store.clearSolves(state.sessionId);
+  updateSyncBadge();
+  state.lastSolveId = null;
+  el.penaltyBar.hidden = true;
+  await loadSession(state.sessionId);
+}
+
+async function onDeleteSession() {
+  const session = state.sessions.find((s) => s.id === state.sessionId);
+  if (!session) return;
+  const ok = await openActionConfirm(
+    "delete session",
+    `Delete "${session.name}" and its ${session.solve_count} solves? This cannot be undone.`,
+    "delete"
+  );
+  if (!ok) return;
+  closeSessionModal();
+  await store.deleteSession(state.sessionId);
+  updateSyncBadge();
+  state.lastSolveId = null;
+  el.penaltyBar.hidden = true;
+  await loadSessionsForEvent();
+}
+
 function renderModal() {
   const solve = findSolve(state.activeSolveId);
   if (!solve) return;
@@ -1652,6 +1752,8 @@ function inputContextActive(e) {
     el.profilePop,
     el.rollupPop,
     el.shortcutsModal,
+    el.sessionModal,
+    el.actionModal,
   ];
   const isHistory = (node) =>
     node && typeof node.closest === "function" && node.closest(".history");
@@ -1705,6 +1807,14 @@ function handleKey(e) {
   if (e.code === "Escape") {
     if (!el.shortcutsModal.hidden) {
       closeShortcuts();
+      return;
+    }
+    if (!el.actionModal.hidden) {
+      resolveAction(false);
+      return;
+    }
+    if (!el.sessionModal.hidden) {
+      closeSessionModal();
       return;
     }
     if (!el.confirmModal.hidden) {
@@ -1972,6 +2082,24 @@ el.exportSession.addEventListener("click", exportCurrentSession);
 el.exportAll.addEventListener("click", exportAllSessions);
 el.shortcutsBtn.addEventListener("click", openShortcuts);
 el.shortcutHint.addEventListener("click", openShortcuts);
+el.sessionManage.addEventListener("click", openSessionModal);
+el.sessionSave.addEventListener("click", onSaveSessionName);
+el.sessionName.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    onSaveSessionName();
+  }
+});
+el.sessionClear.addEventListener("click", onClearSession);
+el.sessionDelete.addEventListener("click", onDeleteSession);
+el.sessionModal.querySelectorAll("[data-close-session]").forEach((btn) => {
+  btn.addEventListener("click", closeSessionModal);
+});
+el.actionCancel.addEventListener("click", () => resolveAction(false));
+el.actionConfirm.addEventListener("click", () => resolveAction(true));
+el.actionModal.querySelectorAll("[data-close-action]").forEach((btn) => {
+  btn.addEventListener("click", () => resolveAction(false));
+});
 el.shortcutsModal.querySelectorAll("[data-close-shortcuts]").forEach((btn) => {
   btn.addEventListener("click", closeShortcuts);
 });

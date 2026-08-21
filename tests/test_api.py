@@ -435,4 +435,107 @@ def test_solve_ops_on_deleted_session_404(client):
         ).status_code
         == 404
     )
-    assert client.patch("/api/solves/v-doom", json={"penalty": "PLUS_TWO"}, headers=h).status_code == 404
+    assert (
+        client.patch("/api/solves/v-doom", json={"penalty": "PLUS_TWO"}, headers=h).status_code == 404
+    )
+
+
+def _ensure_token(client, sub, email, token):
+    with SessionLocal() as db:
+        user = db.execute(
+            select(User).where(User.google_sub == sub)
+        ).scalar_one_or_none()
+        if user is None:
+            user = User(google_sub=sub, email=email)
+            db.add(user)
+            db.flush()
+        existing = db.execute(
+            select(AuthToken).where(AuthToken.token == _hash(token))
+        ).scalar_one_or_none()
+        if existing is None:
+            db.add(AuthToken(token=_hash(token), user_id=user.id))
+        db.commit()
+
+
+def test_rename_session(client):
+    h = {"Authorization": "Bearer tok1"}
+    created = client.post(
+        "/api/sessions",
+        json={"name": "Before", "event": "333", "client_id": "s-ren"},
+        headers=h,
+    )
+    assert created.status_code == 201
+
+    renamed = client.patch("/api/sessions/s-ren", json={"name": "After"}, headers=h)
+    assert renamed.status_code == 200
+    body = renamed.json()
+    assert body["client_id"] == "s-ren"
+    assert body["name"] == "After"
+    assert body["solve_count"] == 0
+
+    listed = client.get("/api/sessions", headers=h).json()
+    match = [s for s in listed if s["client_id"] == "s-ren"]
+    assert len(match) == 1
+    assert match[0]["name"] == "After"
+
+
+def test_rename_requires_auth(client):
+    assert client.patch("/api/sessions/s-ren", json={"name": "X"}).status_code == 401
+
+
+def test_rename_unknown_session_404(client):
+    h = {"Authorization": "Bearer tok1"}
+    assert client.patch("/api/sessions/nope", json={"name": "X"}, headers=h).status_code == 404
+
+
+def test_rename_cross_user_404(client):
+    _ensure_token(client, "sub2", "b@b.c", "tok-ren")
+    h = {"Authorization": "Bearer tok-ren"}
+    assert client.patch("/api/sessions/s-ren", json={"name": "X"}, headers=h).status_code == 404
+
+
+def test_rename_validation(client):
+    h = {"Authorization": "Bearer tok1"}
+    assert client.patch("/api/sessions/s-ren", json={"name": ""}, headers=h).status_code == 422
+    assert (
+        client.patch("/api/sessions/s-ren", json={"name": "x" * 65}, headers=h).status_code == 422
+    )
+    assert (
+        client.patch("/api/sessions/s-ren", json={"name": "   "}, headers=h).status_code == 422
+    )
+
+
+def test_clear_solves_endpoint(client):
+    h = {"Authorization": "Bearer tok1"}
+    created = client.post(
+        "/api/sessions",
+        json={"name": "ClearMe", "event": "333", "client_id": "s-clr"},
+        headers=h,
+    )
+    assert created.status_code == 201
+    for i in range(3):
+        r = client.post(
+            "/api/solves",
+            json={
+                "session_client_id": "s-clr",
+                "client_id": f"vc{i}",
+                "scramble": "U",
+                "time_ms": 1000 + i,
+            },
+            headers=h,
+        )
+        assert r.status_code == 201
+
+    listed = client.get("/api/sessions/s-clr/solves", headers=h)
+    assert listed.status_code == 200
+    assert len(listed.json()) == 3
+
+    cleared = client.delete("/api/sessions/s-clr/solves", headers=h)
+    assert cleared.status_code == 204
+    assert client.get("/api/sessions/s-clr/solves", headers=h).json() == []
+
+
+def test_clear_solves_cross_user_404(client):
+    _ensure_token(client, "sub2", "b@b.c", "tok-clr")
+    h = {"Authorization": "Bearer tok-clr"}
+    assert client.delete("/api/sessions/s-clr/solves", headers=h).status_code == 404

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.auth import AuthUser, get_current_user
 from app.db import get_db
 from app.db_models import SessionRecord, Solve
-from app.models import SessionCreate, SessionOut
+from app.models import SessionCreate, SessionOut, SessionPatch
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
@@ -62,6 +62,32 @@ def create_session(
     row = sessions_with_count(db, SessionRecord.id == rec.id)
     if not row:
         raise HTTPException(status_code=500, detail="failed to create session")
+    return to_session_out(*row[0])
+
+
+@router.patch("/{client_id}", response_model=SessionOut)
+def rename_session(
+    client_id: str,
+    payload: SessionPatch,
+    db: Session = Depends(get_db),
+    user: AuthUser = Depends(get_current_user),
+) -> SessionOut:
+    rec = db.execute(
+        select(SessionRecord).where(
+            SessionRecord.client_id == client_id,
+            SessionRecord.user_id == user["id"],
+        )
+    ).scalar_one_or_none()
+    if rec is None:
+        raise HTTPException(status_code=404, detail="session not found")
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="name cannot be empty")
+    rec.name = name
+    db.commit()
+    row = sessions_with_count(db, SessionRecord.id == rec.id)
+    if not row:
+        raise HTTPException(status_code=500, detail="failed to update session")
     return to_session_out(*row[0])
 
 

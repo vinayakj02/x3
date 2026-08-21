@@ -15,6 +15,10 @@ class SessionCreate(BaseModel):
     client_id: str = Field(default="", max_length=64)
 
 
+class SessionPatch(BaseModel):
+    name: str = Field(min_length=1, max_length=64)
+
+
 class SessionOut(BaseModel):
     id: int
     client_id: str

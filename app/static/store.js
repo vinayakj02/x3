@@ -104,7 +104,28 @@ const local = {
     d.sessions = (d.sessions || []).filter((s) => s.id !== id);
     d.solves = (d.solves || []).filter((v) => v.session_id !== id);
     d.deletedSessions = d.deletedSessions || [];
-    d.deletedSessions.push(id);
+    if (!d.deletedSessions.includes(id)) d.deletedSessions.push(id);
+    saveLocal(d);
+  },
+
+  renameSession(id, name) {
+    const d = loadLocal();
+    const s = (d.sessions || []).find((x) => x.id === id);
+    if (!s) throw new Error("session not found");
+    s.name = name;
+    saveLocal(d);
+    return { ...s, solve_count: (d.solves || []).filter((v) => v.session_id === id).length };
+  },
+
+  clearSolves(id) {
+    const d = loadLocal();
+    const removed = (d.solves || []).filter((v) => v.session_id === id);
+    d.solves = (d.solves || []).filter((v) => v.session_id !== id);
+    // Tombstone each cleared solve so a later login merge cannot resurrect them.
+    d.deletedSolves = d.deletedSolves || [];
+    for (const v of removed) {
+      if (!d.deletedSolves.includes(v.id)) d.deletedSolves.push(v.id);
+    }
     saveLocal(d);
   },
 
@@ -198,10 +219,15 @@ function applyPending(session_id, rows) {
   const deletedSessions = new Set((d.deletedSessions || []).filter(Boolean));
   const deletedSolves = new Set((d.deletedSolves || []).filter(Boolean));
   if (deletedSessions.has(session_id)) return [];
-  let out = rows.filter((s) => !deletedSolves.has(s.id));
-  for (const op of ops) {
+  // A pending clear hides server rows; only creates enqueued after the clear survive.
+  const clearIdx = ops.findIndex(
+    (op) => op.kind === "session_clear" && op.client_id === session_id
+  );
+  let out = (clearIdx === -1 ? rows : []).filter((s) => !deletedSolves.has(s.id));
+  ops.forEach((op, i) => {
     if (op.kind === "create" && op.session_id === session_id) {
-      if (deletedSolves.has(op.client_id)) continue;
+      if (clearIdx !== -1 && i < clearIdx) return;
+      if (deletedSolves.has(op.client_id)) return;
       if (!out.some((s) => s.id === op.client_id)) {
         out.push({
           id: op.client_id,
@@ -214,7 +240,7 @@ function applyPending(session_id, rows) {
         });
       }
     }
-  }
+  });
   for (const op of ops) {
     if (op.kind === "patch") {
       const row = out.find((s) => s.id === op.client_id);
@@ -238,12 +264,25 @@ function reconcileServerState(serverSessions, serverSolves) {
   const pendingBySolve = new Map();
   const pendingCreates = new Map();
   const pendingSessionIds = new Set();
+  const pendingSessionOps = new Map();
+  const pendingClearSessions = new Set();
+  const pendingRenameSessions = new Set();
 
   for (const op of loadPending()) {
     if (!op || !op.client_id) continue;
     if (op.kind === "create") pendingCreates.set(op.client_id, op);
     if (op.kind === "create" || op.kind === "patch" || op.kind === "delete") {
       pendingBySolve.set(op.client_id, op);
+    }
+    if (
+      op.kind === "session_rename" ||
+      op.kind === "session_delete" ||
+      op.kind === "session_clear"
+    ) {
+      pendingSessionOps.set(op.client_id, op);
+      pendingSessionIds.add(op.client_id);
+      if (op.kind === "session_clear") pendingClearSessions.add(op.client_id);
+      if (op.kind === "session_rename") pendingRenameSessions.add(op.client_id);
     }
   }
   for (const op of pendingBySolve.values()) {
@@ -264,8 +303,18 @@ function reconcileServerState(serverSessions, serverSolves) {
     sessions.push(s);
   }
   for (const s of localSessions) {
-    if (!s.id || !pendingSessionIds.has(s.id) || deletedSessions.has(s.id)) continue;
-    if (!sessions.some((existing) => existing.id && existing.id === s.id)) sessions.push(s);
+    if (!s.id || deletedSessions.has(s.id)) continue;
+    if (pendingRenameSessions.has(s.id)) {
+      // A pending rename wins over the stale server name until the op flushes.
+      const idx = sessions.findIndex((existing) => existing.id === s.id);
+      if (idx >= 0) sessions[idx] = s;
+      else sessions.push(s);
+    } else if (
+      pendingSessionIds.has(s.id) &&
+      !sessions.some((existing) => existing.id && existing.id === s.id)
+    ) {
+      sessions.push(s);
+    }
   }
 
   const solves = [];
@@ -283,6 +332,7 @@ function reconcileServerState(serverSessions, serverSolves) {
   for (const v of Array.isArray(serverSolves) ? serverSolves : []) {
     if (v.id && deletedSolves.has(v.id)) continue;
     if (v.session_id && deletedSessions.has(v.session_id)) continue;
+    if (v.session_id && pendingClearSessions.has(v.session_id)) continue;
     const pending = v.id ? pendingBySolve.get(v.id) : null;
     if (pending && pending.kind === "delete") continue;
     const local = v.id ? localSolveById.get(v.id) : null;
@@ -331,8 +381,34 @@ const server = {
   async createSession({ name, event }) {
     return mapSession(await serverApi("/api/sessions", { method: "POST", body: JSON.stringify({ name, event }) }));
   },
+  async renameSession(id, name) {
+    const d = loadLocal();
+    const s = (d.sessions || []).find((x) => x.id === id);
+    if (!s) throw new Error("session not found");
+    s.name = name;
+    saveLocal(d);
+    enqueue({ kind: "session_rename", client_id: id, name });
+    scheduleFlush();
+    return { ...s, solve_count: (d.solves || []).filter((v) => v.session_id === id).length };
+  },
+  async clearSolves(id) {
+    purgePendingSolveOps(id);
+    enqueue({ kind: "session_clear", client_id: id });
+    const d = loadLocal();
+    d.solves = (d.solves || []).filter((v) => v.session_id !== id);
+    saveLocal(d);
+    scheduleFlush();
+  },
   async deleteSession(id) {
-    await serverApi(`/api/sessions/${id}`, { method: "DELETE" });
+    purgePendingSolveOps(id);
+    const d = loadLocal();
+    d.sessions = (d.sessions || []).filter((s) => s.id !== id);
+    d.solves = (d.solves || []).filter((v) => v.session_id !== id);
+    d.deletedSessions = d.deletedSessions || [];
+    if (!d.deletedSessions.includes(id)) d.deletedSessions.push(id);
+    saveLocal(d);
+    enqueue({ kind: "session_delete", client_id: id });
+    scheduleFlush();
   },
   async listSolves(session_id) {
     const rows = (await serverApi(`/api/sessions/${session_id}/solves`)).map(mapSolve);
@@ -402,6 +478,28 @@ async function sendOp(op) {
     }
     return;
   }
+  if (op.kind === "session_rename") {
+    await serverApi(`/api/sessions/${op.client_id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ name: op.name }),
+      keepalive: op.keepalive,
+    });
+    return;
+  }
+  if (op.kind === "session_clear") {
+    await serverApi(`/api/sessions/${op.client_id}/solves`, {
+      method: "DELETE",
+      keepalive: op.keepalive,
+    });
+    return;
+  }
+  if (op.kind === "session_delete") {
+    await serverApi(`/api/sessions/${op.client_id}`, {
+      method: "DELETE",
+      keepalive: op.keepalive,
+    });
+    return;
+  }
   if (op.kind === "patch") {
     await serverApi(`/api/solves/${op.client_id}`, {
       method: "PATCH",
@@ -416,6 +514,28 @@ async function sendOp(op) {
   });
 }
 
+function purgePendingSolveOps(sessionId) {
+  // Snapshot solve ids before the caller drops cache rows.
+  const d = loadLocal();
+  const ids = new Set(
+    (d.solves || []).filter((v) => v.session_id === sessionId).map((v) => v.id)
+  );
+  const ops = loadPending();
+  const kept = ops.filter(
+    (op) =>
+      !(
+        (op.kind === "create" && op.session_id === sessionId) ||
+        ((op.kind === "patch" || op.kind === "delete") && ids.has(op.client_id))
+      )
+  );
+  if (kept.length === ops.length) return;
+  savePending(kept);
+  if (flushBlocked) {
+    flushBlocked = false;
+    scheduleFlush();
+  }
+}
+
 async function flushOnce(opts = {}) {
   for (;;) {
     const ops = loadPending();
@@ -425,7 +545,9 @@ async function flushOnce(opts = {}) {
       await sendOp({ ...op, keepalive: !!opts.keepalive });
     } catch (err) {
       if (err && err.status === 404) {
-        if (op.kind === "delete") {
+        if (op.kind === "delete" || op.kind.startsWith("session_")) {
+          // Session ops are idempotent on 404: an absent session has nothing to
+          // rename, clear, or delete (its solves cascaded server-side).
           ops.shift();
           savePending(ops);
           notifySync();
@@ -486,6 +608,12 @@ export const store = {
   },
   async deleteSession(id) {
     return mode === "local" ? local.deleteSession(id) : server.deleteSession(id);
+  },
+  async renameSession(id, name) {
+    return mode === "local" ? local.renameSession(id, name) : server.renameSession(id, name);
+  },
+  async clearSolves(id) {
+    return mode === "local" ? local.clearSolves(id) : server.clearSolves(id);
   },
   async listSolves(session_id) {
     return mode === "local" ? local.listSolves(session_id) : server.listSolves(session_id);
@@ -599,6 +727,12 @@ async function mergeLocalToServer() {
   delete reconciled.deletedSessions;
   delete reconciled.deletedSolves;
   saveLocal(reconciled);
+  // Merge already carried final names and deletions; only clears still need the queue.
+  savePending(
+    loadPending().filter(
+      (op) => op.kind !== "session_rename" && op.kind !== "session_delete"
+    )
+  );
   setReady();
 }
 

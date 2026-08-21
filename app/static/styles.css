@@ -1762,6 +1762,45 @@ body.scramble-hidden .scramble {
   outline-offset: 0;
 }
 
+.session-manage {
+  padding: 0.2rem 0.45rem;
+  border: 1px solid var(--hair);
+}
+
+.field-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 0 0 0.35rem;
+}
+
+.text-input {
+  width: 100%;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  color: var(--ink);
+  background: var(--face-deep);
+  border: 1px solid var(--hair-strong);
+  border-radius: 0;
+  padding: 0.5rem 0.6rem;
+}
+
+.text-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+}
+
+.session-meta {
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+  margin: 0.55rem 0 1rem;
+}
+
 .modal-spacer {
   flex: 1;
 }
