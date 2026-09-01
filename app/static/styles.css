@@ -1098,14 +1098,16 @@ body.cube-hidden .cube {
 }
 
 .scramble {
-  position: relative;
-  z-index: 2;
-  font-family: var(--font-mono);
-  font-size: calc(
+  --scramble-fs: calc(
     clamp(1.05rem, 1.4rem, 1.2rem + 1vmin) *
     var(--scramble-size, 1) *
     var(--scramble-event-scale, 1)
   );
+  --scramble-lh: calc(var(--scramble-fs) * 1.55);
+  position: relative;
+  z-index: 2;
+  font-family: var(--font-mono);
+  font-size: var(--scramble-fs);
   font-weight: 700;
   letter-spacing: 0.04em;
   line-height: 1.55;
@@ -1116,6 +1118,8 @@ body.cube-hidden .cube {
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+  background-image: linear-gradient(to top, var(--hair) 1px, transparent 1px);
+  background-size: 100% var(--scramble-lh);
 }
 
 body.scramble-hidden .scramble {
@@ -1154,10 +1158,8 @@ body.scramble-hidden .scramble {
 .instrument-grid {
   position: absolute;
   inset: 0;
-  background-image:
-    linear-gradient(var(--hair) 1px, transparent 1px),
-    linear-gradient(90deg, var(--hair) 1px, transparent 1px);
-  background-size: var(--grid) var(--grid);
+  background-image: linear-gradient(90deg, var(--hair) 1px, transparent 1px);
+  background-size: var(--grid) 100%;
   opacity: 0.28;
 }
 
