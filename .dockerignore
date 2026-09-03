@@ -1,0 +1,24 @@
+# VCS / CI
+.git
+.github
+
+# Local dev / secrets / overrides (never part of the image)
+.env
+.env.*
+docker-compose.local.yml
+.playwright-mcp
+
+# Python caches (stale .pyc from the host's interpreter must not land in the image)
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+
+# macOS noise
+.DS_Store
+
+# Docs / experiments / raw assets: not COPY'd, keep them out of the build context
+docs/
+my_docs/
+experiments/
+assets/
