@@ -38,8 +38,8 @@
   }
 
   const THEME_CELEBRATIONS = {
-    "star-wars": { name: "Star Wars", spawn: "ships", imgs: SHIP_IMGS, colors: ["#4fd8ff", "#ffd84d", "#3dff6e"], count: 20 },
-    "alien": { name: "Alien", spawn: "ships", imgs: ALIEN_IMGS, colors: ["#7cfc00", "#8ae99a", "#a3b18a"], count: 20, speed: 0.5 },
+    "star-wars": { name: "Star Wars", spawn: "ships", imgs: SHIP_IMGS, colors: ["#00e5ff", "#ffe81f", "#3dff6e"], count: 20, speed: 0.45 },
+    "alien": { name: "Alien", spawn: "ships", imgs: ALIEN_IMGS, colors: ["#7cfc00", "#66ff99", "#ffb000"], count: 20, speed: 0.4 },
     "the-matrix": { name: "Matrix", spawn: "matrixRain", colors: ["#00ff41", "#00e05f", "#d8ffd8"], count: 70 },
   };
 
@@ -157,12 +157,12 @@
           const fromLeft = Math.random() < 0.5;
           const imgs = cfg.imgs || SHIP_IMGS;
           const img = imgs[Math.random() < 0.55 ? 0 : 1];
-          const scale = (0.18 + Math.random() * 0.12) * (window.devicePixelRatio > 1 ? 0.8 : 1);
-          const spd = cfg.speed ?? 1;
+          const scale = (0.26 + Math.random() * 0.16) * (window.devicePixelRatio > 1 ? 0.8 : 1);
+          const spd = cfg.speed ?? 0.45;
           ships.push({
             x: fromLeft ? -img.width * scale : W + img.width * scale,
             y: H * 0.1 + Math.random() * H * 0.72,
-            vx: (fromLeft ? 1 : -1) * (4 + Math.random() * 4) * spd,
+            vx: (fromLeft ? 1 : -1) * (1.6 + Math.random() * 1.6) * spd,
             vy: (Math.random() - 0.5) * 0.6 * spd,
             img,
             scale,

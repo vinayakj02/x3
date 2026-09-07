@@ -59,7 +59,6 @@ const el = {
   sparkEmpty: document.getElementById("spark-empty"),
   themesBtn: document.getElementById("themes-btn"),
   themesPop: document.getElementById("themes-pop"),
-  themesSearch: document.getElementById("themes-search"),
   themesList: document.getElementById("themes-list"),
   settingsBtn: document.getElementById("settings-btn"),
   settingsPop: document.getElementById("settings-pop"),
@@ -71,6 +70,10 @@ const el = {
   cubeSizeValue: document.getElementById("cube-size-value"),
   font: document.getElementById("font"),
   sparkMode: document.getElementById("spark-mode"),
+  bgUrl: document.getElementById("bg-url"),
+  bgDim: document.getElementById("bg-dim"),
+  bgDimValue: document.getElementById("bg-dim-value"),
+  bgClear: document.getElementById("bg-clear"),
   confirmModal: document.getElementById("confirm-modal"),
   confirmTime: document.getElementById("confirm-time"),
   confirmText: document.getElementById("confirm-text"),
@@ -491,6 +494,85 @@ function initSettings() {
     saveSettings();
     renderSparkline();
   });
+  initBackground();
+}
+
+const BG_URL_KEY = "x3.bgUrl";
+const BG_DIM_KEY = "x3.bgDim";
+
+function validBgUrl(v) {
+  const u = (v || "").trim();
+  return /^https?:\/\/\S+\.\S+/.test(u) ? u : "";
+}
+
+function applyBackground(url, dim) {
+  const root = document.documentElement;
+  const clean = validBgUrl(url);
+  if (clean) {
+    root.style.setProperty("--bg-image", `url("${clean.replace(/"/g, "")}")`);
+    root.style.setProperty("--bg-veil", String(Math.min(0.95, Math.max(0, dim)) / 100));
+    document.body.classList.add("has-bg");
+  } else {
+    root.style.removeProperty("--bg-image");
+    root.style.removeProperty("--bg-veil");
+    document.body.classList.remove("has-bg");
+  }
+  if (el.bgUrl && document.activeElement !== el.bgUrl) el.bgUrl.value = clean;
+  if (el.bgDimValue) el.bgDimValue.textContent = `${dim}%`;
+}
+
+function initBackground() {
+  let dim = 80;
+  try {
+    const d = Number(localStorage.getItem(BG_DIM_KEY));
+    if (Number.isFinite(d)) dim = Math.min(95, Math.max(0, d));
+  } catch (err) {
+    /* ignore */
+  }
+  const params = new URLSearchParams(location.search);
+  const query = validBgUrl(params.get("bg"));
+  let saved = "";
+  try {
+    saved = validBgUrl(localStorage.getItem(BG_URL_KEY));
+  } catch (err) {
+    /* ignore */
+  }
+  const url = query || saved;
+  if (el.bgDim) el.bgDim.value = dim;
+  applyBackground(url, dim);
+  if (el.bgUrl) {
+    el.bgUrl.addEventListener("change", () => {
+      const clean = validBgUrl(el.bgUrl.value);
+      try {
+        if (clean) localStorage.setItem(BG_URL_KEY, clean);
+        else localStorage.removeItem(BG_URL_KEY);
+      } catch (err) {
+        /* ignore */
+      }
+      applyBackground(clean, Number(el.bgDim.value));
+    });
+  }
+  if (el.bgDim) {
+    el.bgDim.addEventListener("input", () => {
+      const d = Number(el.bgDim.value);
+      try {
+        localStorage.setItem(BG_DIM_KEY, String(d));
+      } catch (err) {
+        /* ignore */
+      }
+      applyBackground(validBgUrl(el.bgUrl.value), d);
+    });
+  }
+  if (el.bgClear) {
+    el.bgClear.addEventListener("click", () => {
+      try {
+        localStorage.removeItem(BG_URL_KEY);
+      } catch (err) {
+        /* ignore */
+      }
+      applyBackground("", Number(el.bgDim.value));
+    });
+  }
 }
 
 function saveSettings() {
@@ -594,8 +676,15 @@ async function exportAllSessions() {
 /* ---------- themes ---------- */
 
 const THEME_KEY = "x3.theme";
+let lastThemeVars = [];
 const SYSTEM_THEMES = [
-  { id: "light", name: "x3 · Light", group: "x3", dark: false },
+  {
+    id: "light",
+    name: "Paper White",
+    group: "x3",
+    dark: false,
+    fontDisplay: '"Charter", "Bitstream Charter", "Sitka Text", Georgia, "Times New Roman", serif',
+  },
   { id: "dark", name: "x3 · Dark", group: "x3", dark: true },
 ];
 
@@ -612,7 +701,25 @@ function applyTheme(id) {
   const root = document.documentElement;
   const theme =
     SYSTEM_THEMES.find((t) => t.id === id) || (window.THEMES || []).find((t) => t.id === id);
-  if (!theme) return;
+  if (!theme) {
+    if (id !== "dark") applyTheme("dark");
+    return;
+  }
+  state.themeId = id;
+  root.dataset.themeId = id;
+  const fontUrl = theme.fontUrl || null;
+  let fontLink = document.getElementById("theme-font");
+  if (fontUrl) {
+    if (!fontLink) {
+      fontLink = document.createElement("link");
+      fontLink.id = "theme-font";
+      fontLink.rel = "stylesheet";
+      document.head.appendChild(fontLink);
+    }
+    if (fontLink.getAttribute("href") !== fontUrl) fontLink.setAttribute("href", fontUrl);
+  } else if (fontLink) {
+    fontLink.remove();
+  }
   state.themeId = id;
   try {
     localStorage.setItem(THEME_KEY, id);
@@ -647,6 +754,24 @@ function applyTheme(id) {
     cubeColors = { ...DEFAULT_CUBE_COLORS };
     applyCubeColors();
   }
+  if (theme.fontDisplay) {
+    root.style.setProperty("--font-display", theme.fontDisplay);
+  } else {
+    root.style.removeProperty("--font-display");
+  }
+  if (theme.fontMono) {
+    root.style.setProperty("--font-mono", theme.fontMono);
+  } else {
+    root.style.removeProperty("--font-mono");
+  }
+  for (const k of lastThemeVars) root.style.removeProperty(k);
+  lastThemeVars = [];
+  if (theme.vars) {
+    for (const [k, v] of Object.entries(theme.vars)) {
+      root.style.setProperty(k, v);
+      lastThemeVars.push(k);
+    }
+  }
   if (window.refreshFavicon) window.refreshFavicon();
 }
 
@@ -657,6 +782,12 @@ function cubeColorsFromTheme(theme) {
 }
 
 function initTheme() {
+  const params = new URLSearchParams(location.search);
+  const query = params.get("theme");
+  if (query) {
+    applyTheme(query);
+    return;
+  }
   const saved = localStorage.getItem(THEME_KEY);
   if (saved) {
     applyTheme(saved);
@@ -665,13 +796,11 @@ function initTheme() {
   applyTheme("star-wars");
 }
 
-function renderThemesList(listEl, searchEl) {
+function renderThemesList(listEl) {
   listEl.innerHTML = "";
-  const f = (searchEl.value || "").toLowerCase();
   const all = [...SYSTEM_THEMES, ...(window.THEMES || [])];
   const grouped = {};
   for (const t of all) {
-    if (f && !t.name.toLowerCase().includes(f)) continue;
     const g = t.group || "x3";
     (grouped[g] = grouped[g] || []).push(t);
   }
@@ -709,7 +838,7 @@ function renderThemesList(listEl, searchEl) {
 }
 
 function refreshThemeLists() {
-  renderThemesList(el.themesList, el.themesSearch);
+  renderThemesList(el.themesList);
 }
 
 function applyScramble(moves) {
@@ -1047,6 +1176,18 @@ function renderSolves() {
     li.className = "empty-state";
     li.textContent = "no solves yet — hold space to start";
     el.solveList.appendChild(li);
+    for (let g = 0; g < 5; g++) {
+      const gh = document.createElement("li");
+      gh.className = "solve-row solve-ghost";
+      gh.setAttribute("aria-hidden", "true");
+      const parts = ["·", "–––", "–––", "–––"];
+      for (const p of parts) {
+        const s = document.createElement("span");
+        s.textContent = p;
+        gh.appendChild(s);
+      }
+      el.solveList.appendChild(gh);
+    }
     return;
   }
   const rollups = state.rollups;
@@ -2174,10 +2315,10 @@ el.themesBtn.addEventListener("click", (e) => {
   e.stopPropagation();
   closeOtherPops(el.themesPop);
   el.themesPop.hidden = !el.themesPop.hidden;
-  if (!el.themesPop.hidden) renderThemesList(el.themesList, el.themesSearch);
+  if (!el.themesPop.hidden) renderThemesList(el.themesList);
   updatePopAria();
 });
-el.themesSearch.addEventListener("input", () => renderThemesList(el.themesList, el.themesSearch));
+
 
 el.settingsBtn.addEventListener("click", (e) => {
   e.stopPropagation();

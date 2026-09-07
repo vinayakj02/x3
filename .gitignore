@@ -26,3 +26,5 @@ my_docs/
 .env
 .env.*
 docker-compose.local.yml
+
+.playwright-mcp/

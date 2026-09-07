@@ -1,1 +1,69 @@
-window.THEMES = [{"id":"star-wars","name":"Star Wars","group":"Movies","dark":true,"colors":{"face":"#0c0e12","faceDeep":"#06070a","ink":"#e8e6d8","inkSoft":"#8f94a3","accent":"#4fd8ff","ok":"#3dff6e","bad":"#ff3b30","brass":"#ffd84d"}},{"id":"alien","name":"Alien","group":"Movies","dark":true,"colors":{"face":"#07090b","faceDeep":"#020304","ink":"#d5e0dc","inkSoft":"#7f8d87","accent":"#7cfc00","ok":"#8ae99a","bad":"#e74c3c","brass":"#a3b18a"}},{"id":"the-matrix","name":"The Matrix","group":"Movies","dark":true,"colors":{"face":"#030805","faceDeep":"#010502","ink":"#d8ffd8","inkSoft":"#6faa72","accent":"#00ff41","ok":"#00e05f","bad":"#ff3b30","brass":"#b8ff3d"}},{"id":"arch-linux","name":"Arch Linux","group":"Linux \u00b7 Distro","dark":true,"colors":{"face":"#14161c","faceDeep":"#0e1015","ink":"#e9ecf1","inkSoft":"#9aa3b4","accent":"#3cb0ea","ok":"#43a371","bad":"#e16353","brass":"#d3a75f"}},{"id":"ubuntu","name":"Ubuntu","group":"Linux \u00b7 Distro","dark":true,"colors":{"face":"#14161c","faceDeep":"#0e1015","ink":"#e9ecf1","inkSoft":"#9aa3b4","accent":"#ee7f58","ok":"#43a371","bad":"#e16353","brass":"#d3a75f"}},{"id":"fedora","name":"Fedora","group":"Linux \u00b7 Distro","dark":true,"colors":{"face":"#14161c","faceDeep":"#0e1015","ink":"#e9ecf1","inkSoft":"#9aa3b4","accent":"#7aa6dc","ok":"#43a371","bad":"#e16353","brass":"#d3a75f"}},{"id":"debian","name":"Debian","group":"Linux \u00b7 Distro","dark":true,"colors":{"face":"#14161c","faceDeep":"#0e1015","ink":"#e9ecf1","inkSoft":"#9aa3b4","accent":"#f52972","ok":"#43a371","bad":"#e16353","brass":"#d3a75f"}},{"id":"linux-mint","name":"Linux Mint","group":"Linux \u00b7 Distro","dark":true,"colors":{"face":"#14161c","faceDeep":"#0e1015","ink":"#e9ecf1","inkSoft":"#9aa3b4","accent":"#a5db6f","ok":"#43a371","bad":"#e16353","brass":"#d3a75f"}},{"id":"kali","name":"Kali","group":"Linux \u00b7 Distro","dark":true,"colors":{"face":"#14161c","faceDeep":"#0e1015","ink":"#e9ecf1","inkSoft":"#9aa3b4","accent":"#88acc4","ok":"#43a371","bad":"#e16353","brass":"#d3a75f"}},{"id":"manjaro","name":"Manjaro","group":"Linux \u00b7 Distro","dark":true,"colors":{"face":"#14161c","faceDeep":"#0e1015","ink":"#e9ecf1","inkSoft":"#9aa3b4","accent":"#5fd37f","ok":"#43a371","bad":"#e16353","brass":"#d3a75f"}},{"id":"popos","name":"Pop!_OS","group":"Linux \u00b7 Distro","dark":true,"colors":{"face":"#14161c","faceDeep":"#0e1015","ink":"#e9ecf1","inkSoft":"#9aa3b4","accent":"#76bfd4","ok":"#43a371","bad":"#e16353","brass":"#d3a75f"}},{"id":"nixos","name":"NixOS","group":"Linux \u00b7 Distro","dark":true,"colors":{"face":"#14161c","faceDeep":"#0e1015","ink":"#e9ecf1","inkSoft":"#9aa3b4","accent":"#adc8ec","ok":"#43a371","bad":"#e16353","brass":"#d3a75f"}},{"id":"opensuse","name":"openSUSE","group":"Linux \u00b7 Distro","dark":true,"colors":{"face":"#14161c","faceDeep":"#0e1015","ink":"#e9ecf1","inkSoft":"#9aa3b4","accent":"#92da43","ok":"#43a371","bad":"#e16353","brass":"#d3a75f"}},{"id":"nord","name":"Nord","group":"Linux \u00b7 Terminal","dark":true,"colors":{"face":"#14161c","faceDeep":"#0e1015","ink":"#e9ecf1","inkSoft":"#9aa3b4","accent":"#b4d7e1","ok":"#43a371","bad":"#e16353","brass":"#d3a75f"}},{"id":"solarized-dark","name":"Solarized Dark","group":"Linux \u00b7 Terminal","dark":true,"colors":{"face":"#14161c","faceDeep":"#0e1015","ink":"#e9ecf1","inkSoft":"#9aa3b4","accent":"#55a7e0","ok":"#43a371","bad":"#e16353","brass":"#d3a75f"}},{"id":"solarized-light","name":"Solarized Light","group":"Linux \u00b7 Terminal","dark":false,"colors":{"face":"#e7e9ec","faceDeep":"#dfe2e7","ink":"#10121a","inkSoft":"#3a3f4d","accent":"#268bd2","ok":"#1f7a48","bad":"#b23a2b","brass":"#a97c3f"}},{"id":"dracula","name":"Dracula","group":"Linux \u00b7 Terminal","dark":true,"colors":{"face":"#14161c","faceDeep":"#0e1015","ink":"#e9ecf1","inkSoft":"#9aa3b4","accent":"#e0cdfc","ok":"#43a371","bad":"#e16353","brass":"#d3a75f"}},{"id":"gruvbox","name":"Gruvbox","group":"Linux \u00b7 Terminal","dark":true,"colors":{"face":"#14161c","faceDeep":"#0e1015","ink":"#e9ecf1","inkSoft":"#9aa3b4","accent":"#fc7f70","ok":"#43a371","bad":"#e16353","brass":"#d3a75f"}},{"id":"monokai","name":"Monokai","group":"Linux \u00b7 Terminal","dark":true,"colors":{"face":"#14161c","faceDeep":"#0e1015","ink":"#e9ecf1","inkSoft":"#9aa3b4","accent":"#bde964","ok":"#43a371","bad":"#e16353","brass":"#d3a75f"}},{"id":"tokyo-night","name":"Tokyo Night","group":"Linux \u00b7 Terminal","dark":true,"colors":{"face":"#14161c","faceDeep":"#0e1015","ink":"#e9ecf1","inkSoft":"#9aa3b4","accent":"#b4cafa","ok":"#43a371","bad":"#e16353","brass":"#d3a75f"}},{"id":"catppuccin-mocha","name":"Catppuccin Mocha","group":"Linux \u00b7 Terminal","dark":true,"colors":{"face":"#14161c","faceDeep":"#0e1015","ink":"#e9ecf1","inkSoft":"#9aa3b4","accent":"#c4d9fc","ok":"#43a371","bad":"#e16353","brass":"#d3a75f"}},{"id":"one-dark","name":"One Dark","group":"Linux \u00b7 Terminal","dark":true,"colors":{"face":"#14161c","faceDeep":"#0e1015","ink":"#e9ecf1","inkSoft":"#9aa3b4","accent":"#99cbf5","ok":"#43a371","bad":"#e16353","brass":"#d3a75f"}},{"id":"rose-pine","name":"Rose Pine","group":"Linux \u00b7 Terminal","dark":true,"colors":{"face":"#14161c","faceDeep":"#0e1015","ink":"#e9ecf1","inkSoft":"#9aa3b4","accent":"#f9eae9","ok":"#43a371","bad":"#e16353","brass":"#d3a75f"}}];
+window.THEMES = [
+  {
+    "id": "star-wars",
+    "name": "Star Wars",
+    "group": "Movies",
+    "dark": true,
+    "fontDisplay": "\"Graduate\", \"ITC Serif Gothic\", \"Serif Gothic\", serif",
+    "fontUrl": "https://fonts.googleapis.com/css2?family=Graduate&display=swap",
+    "vars": {
+      "--gridline": "rgba(0, 229, 255, 0.16)",
+      "--grid-op": "0.4"
+    },
+    "colors": {
+      "face": "#0a0c10",
+      "faceDeep": "#05070b",
+      "ink": "#fdf6ec",
+      "inkSoft": "#8e96a3",
+      "accent": "#00e5ff",
+      "ok": "#3dff6e",
+      "bad": "#f94144",
+      "brass": "#ffe81f"
+    }
+  },
+  {
+    "id": "alien",
+    "name": "Alien",
+    "group": "Movies",
+    "dark": true,
+    "fontMono": "\"Share Tech Mono\", \"Courier Prime\", ui-monospace, monospace",
+    "fontUrl": "https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap",
+    "vars": {
+      "--gridline": "rgba(124, 252, 0, 0.16)",
+      "--grid-op": "0.4"
+    },
+    "colors": {
+      "face": "#000000",
+      "faceDeep": "#020403",
+      "ink": "#d7f0d8",
+      "inkSoft": "#5a8a70",
+      "accent": "#7cfc00",
+      "ok": "#66ff99",
+      "bad": "#ff0000",
+      "brass": "#ffb000"
+    }
+  },
+  {
+    "id": "the-matrix",
+    "name": "The Matrix",
+    "group": "Movies",
+    "dark": true,
+    "fontMono": "\"VT323\", \"Share Tech Mono\", ui-monospace, monospace",
+    "fontUrl": "https://fonts.googleapis.com/css2?family=VT323&display=swap",
+    "vars": {
+      "--gridline": "rgba(0, 255, 65, 0.22)",
+      "--grid-op": "0.45",
+      "--grid": "18px"
+    },
+    "colors": {
+      "face": "#010502",
+      "faceDeep": "#000301",
+      "ink": "#d8ffd8",
+      "inkSoft": "#3f7a4a",
+      "accent": "#00ff41",
+      "ok": "#00e05f",
+      "bad": "#ff2a2a",
+      "brass": "#b8ff3d"
+    }
+  }
+];

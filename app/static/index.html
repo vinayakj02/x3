@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#e7e9ec" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#f5f4ed" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#10121a" media="(prefers-color-scheme: dark)" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -14,9 +14,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <script src="https://cdn.cubing.net/v0/js/cubing/twisty" type="module" integrity="sha384-NS/RLzrthoePAHnoX1ny1q2BOPpsDWFiSa4KkaPu35uG7ToL1Dj/jCWkku0mLPBO" crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="styles.css?v=68" />
+  <link rel="stylesheet" href="styles.css?v=83" />
 </head>
 <body>
+  <div class="bg-veil" aria-hidden="true"></div>
   <header class="topbar">
     <div class="brand">
       <svg class="brand-mark" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
@@ -45,7 +46,6 @@
         <div class="themes-wrap">
           <button id="themes-btn" class="ghost-btn" type="button" aria-haspopup="true" aria-expanded="false">themes</button>
           <div class="themes-pop" id="themes-pop" hidden>
-            <input id="themes-search" class="themes-search" type="search" placeholder="search themes…" />
             <div class="themes-list" id="themes-list"></div>
           </div>
         </div>
@@ -90,6 +90,19 @@
                   <option value="line">line</option>
                   <option value="swarm">solve swarm</option>
                 </select>
+              </div>
+            </div>
+            <div class="settings-section">
+              <h4>background</h4>
+              <label class="field-label" for="bg-url">image link (hotlinked, never uploaded)</label>
+              <input id="bg-url" class="text-input" type="url" inputmode="url" placeholder="https://…" autocomplete="off" />
+              <div class="settings-range" style="margin-top:0.5rem">
+                <label class="switch-row" for="bg-dim" style="min-width:72px">dim</label>
+                <input id="bg-dim" type="range" min="0" max="95" step="5" value="80" />
+                <span class="settings-value" id="bg-dim-value">80%</span>
+              </div>
+              <div class="settings-actions" style="margin-top:0.5rem">
+                <button id="bg-clear" class="ghost-btn settings-action" type="button">clear background</button>
               </div>
             </div>
             <div class="settings-section">
@@ -308,8 +321,8 @@
   </div>
 
   <script src="logo.js?v=3"></script>
-  <script src="themes.js?v=4"></script>
-  <script src="celebrate.js?v=6"></script>
-  <script type="module" src="app.js?v=68"></script>
+  <script src="themes.js?v=10"></script>
+  <script src="celebrate.js?v=7"></script>
+  <script type="module" src="app.js?v=74"></script>
 </body>
 </html>
