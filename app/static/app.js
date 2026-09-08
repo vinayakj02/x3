@@ -1817,7 +1817,7 @@ async function stopRun(penalty = "NONE") {
       }
     }
     showPenaltyBar(saved.id);
-    if (penalty !== "DNF" && isAbnormalSolve(saved.id)) {
+    if (penalty !== "DNF" && (isAbnormalSolve(saved.id) || isAbnormalFastSolve(saved))) {
       await confirmUnusualSolve(saved.id);
     }
   } catch (err) {
@@ -1941,13 +1941,11 @@ function isAbnormalSolve(solveId) {
 
 function isAbnormalFastSolve(solve) {
   if (!solve || solve.penalty === "DNF") return false;
-  const valid = state.solves
+  const others = state.solves
     .filter((s) => s.penalty !== "DNF" && s.id !== solve.id)
     .map((s) => s.adjusted_ms);
-  if (valid.length < 8) return false;
-  const mean = valid.reduce((a, b) => a + b, 0) / valid.length;
-  const sd = Math.sqrt(valid.reduce((a, b) => a + (b - mean) ** 2, 0) / valid.length) || 1;
-  return solve.adjusted_ms < mean - 2.5 * sd;
+  if (others.length < 1) return false;
+  return solve.adjusted_ms < Math.min(...others);
 }
 
 function confirmUnusualSolve(solveId) {
@@ -1956,12 +1954,20 @@ function confirmUnusualSolve(solveId) {
     .filter((s) => s.penalty !== "DNF" && s.id !== solveId)
     .map((s) => s.adjusted_ms);
   const mean = valid.reduce((a, b) => a + b, 0) / valid.length;
+  const fast = isAbnormalFastSolve(solve);
+  const best = valid.length ? Math.min(...valid) : null;
   el.confirmTime.textContent = formatSolveTime(solve);
   el.confirmTime.className = "modal-time";
-  el.confirmText.textContent = `${formatTime(Math.round(solve.adjusted_ms), 2)} is well above your ~${formatTime(
-    Math.round(mean),
-    2
-  )} average. Was that solve right?`;
+  el.confirmText.textContent =
+    fast
+      ? `${formatTime(Math.round(solve.adjusted_ms), 2)} is faster than your previous best (${formatTime(
+          Math.round(best),
+          2
+        )}). Was that solve right?`
+      : `${formatTime(Math.round(solve.adjusted_ms), 2)} is well above your ~${formatTime(
+          Math.round(mean),
+          2
+        )} average. Was that solve right?`;
   el.confirmModal.hidden = false;
   return new Promise((resolve) => {
     el.confirmKeep.onclick = () => {

@@ -72,7 +72,21 @@ async def security_headers(request: Request, call_next):
         response.headers.setdefault(name, value)
     if request.url.path.startswith("/api/"):
         response.headers.setdefault("Cache-Control", "no-store")
-    if response.headers.get("content-type", "").startswith("text/html"):
+        return response
+    ctype = response.headers.get("content-type", "")
+    qs = request.url.query
+    path = request.url.path
+    is_asset = path.endswith(".css") or path.endswith(".js")
+    if ctype.startswith("text/html"):
+        # HTML must revalidate: new asset versions (?v=) only arrive via fresh HTML.
+        response.headers.setdefault("Cache-Control", "no-cache")
+    elif is_asset and "v=" in qs:
+        # Versioned assets are immutable: version bumps bust the URL.
+        response.headers.setdefault("Cache-Control", "public, max-age=31536000, immutable")
+    else:
+        # Unversioned static (favicon, fonts, images): short cache + etag revalidation.
+        response.headers.setdefault("Cache-Control", "public, max-age=3600")
+    if ctype.startswith("text/html"):
         response.headers.setdefault("Content-Security-Policy", CONTENT_SECURITY_POLICY)
     return response
 
