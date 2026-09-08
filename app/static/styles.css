@@ -121,6 +121,13 @@ body.has-bg .penalty-bar .penalty-btn {
 .topbar,
 .stage {
   position: relative;
+}
+
+.topbar {
+  z-index: 2;
+}
+
+.stage {
   z-index: 1;
 }
 
