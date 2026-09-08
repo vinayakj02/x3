@@ -508,6 +508,8 @@ function validBgUrl(v) {
 function applyBackground(url, dim) {
   const root = document.documentElement;
   const clean = validBgUrl(url);
+  root.setAttribute("data-bg-url", clean);
+  root.setAttribute("data-bg-dim", String(Math.min(95, Math.max(0, dim))));
   if (clean) {
     root.style.setProperty("--bg-image", `url("${clean.replace(/"/g, "")}")`);
     root.style.setProperty("--bg-veil", String(Math.min(0.95, Math.max(0, dim)) / 100));
@@ -521,6 +523,21 @@ function applyBackground(url, dim) {
   if (el.bgDimValue) el.bgDimValue.textContent = `${dim}%`;
 }
 
+function restoreBackgroundVars(root) {
+  const veiled = document.body.classList.contains("has-bg");
+  const url = veiled ? root.getAttribute("data-bg-url") : "";
+  const dim = veiled ? root.getAttribute("data-bg-dim") || "80" : "80";
+  if (url) {
+    root.style.setProperty("--bg-image", `url("${url}")`);
+    root.style.setProperty("--bg-veil", String(Math.min(0.95, Math.max(0, Number(dim))) / 100));
+    document.body.classList.add("has-bg");
+  } else {
+    root.style.removeProperty("--bg-image");
+    root.style.removeProperty("--bg-veil");
+    document.body.classList.remove("has-bg");
+  }
+}
+
 function initBackground() {
   let dim = 80;
   try {
@@ -531,6 +548,8 @@ function initBackground() {
   }
   const params = new URLSearchParams(location.search);
   const query = validBgUrl(params.get("bg"));
+  const qDim = Number(params.get("bgdim"));
+  if (Number.isFinite(qDim)) dim = Math.min(95, Math.max(0, qDim));
   let saved = "";
   try {
     saved = validBgUrl(localStorage.getItem(BG_URL_KEY));
@@ -754,6 +773,7 @@ function applyTheme(id) {
     cubeColors = { ...DEFAULT_CUBE_COLORS };
     applyCubeColors();
   }
+  restoreBackgroundVars(root);
   if (theme.fontDisplay) {
     root.style.setProperty("--font-display", theme.fontDisplay);
   } else {

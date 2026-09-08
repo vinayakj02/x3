@@ -102,6 +102,22 @@ body.has-bg .bg-veil {
   opacity: var(--bg-veil, 0.8);
 }
 
+body.has-bg .topbar,
+body.has-bg .stage {
+  background: transparent;
+}
+
+body.has-bg .history,
+body.has-bg .instrument,
+body.has-bg .stat-card {
+  background: color-mix(in srgb, var(--face-deep) 88%, transparent);
+}
+
+body.has-bg .scramble-nav .ghost-btn,
+body.has-bg .penalty-bar .penalty-btn {
+  background: color-mix(in srgb, var(--face) 82%, transparent);
+}
+
 .topbar,
 .stage {
   position: relative;
